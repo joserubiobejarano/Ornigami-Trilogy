@@ -46,8 +46,7 @@ const PAYMENT_METHOD_OPTIONS = ["Square", "Afterpay", "Zelle", "Cash", "TDC"];
 const ESTADO_OPTIONS = ["BGK"] as const;
 const CIUDAD_OPTIONS = ["Miami", "Atlanta"] as const;
 
-const STICKY_BG = "bg-background";
-const STICKY_Z = "z-10";
+const HEADER_CELL_STICKY = "sticky top-0 z-10 bg-muted";
 
 type OptimisticField = BooleanField | "status";
 type OptimisticOverrides = Record<string, Partial<Pick<EnrollmentRow, OptimisticField>>>;
@@ -207,110 +206,105 @@ export function EventParticipantsTable({
       onOpenChange={(open) => !open && setTransferModalEnrollmentId(null)}
     />
     <div className="w-full max-w-full min-w-0 overflow-hidden rounded-md border">
-      <div className="w-full overflow-x-auto">
+      <div className="w-full overflow-auto max-h-[calc(100vh-12rem)]">
         <table className="w-full min-w-[1720px] text-xs lg:text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-muted">
               <th
                 className={cn(
-                  "sticky left-0 min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
-                  STICKY_BG,
-                  STICKY_Z
+                  HEADER_CELL_STICKY,
+                  "min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3"
                 )}
               >
                 Nombre
               </th>
               <th
                 className={cn(
-                  "sticky left-[120px] min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
-                  STICKY_BG,
-                  STICKY_Z
+                  HEADER_CELL_STICKY,
+                  "min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3"
                 )}
               >
                 Apellidos
               </th>
               <th
                 className={cn(
-                  "sticky left-[240px] min-w-[180px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
-                  STICKY_BG,
-                  STICKY_Z
+                  HEADER_CELL_STICKY,
+                  "min-w-[180px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3"
                 )}
               >
                 Correo
               </th>
               <th
                 className={cn(
-                  "sticky left-[420px] min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
-                  STICKY_BG,
-                  STICKY_Z
+                  HEADER_CELL_STICKY,
+                  "min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3"
                 )}
               >
                 Teléfono
               </th>
               <th
                 className={cn(
-                  "sticky left-[540px] min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
-                  STICKY_BG,
-                  STICKY_Z
+                  HEADER_CELL_STICKY,
+                  "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3"
                 )}
               >
                 Ángel
               </th>
-              <th className="min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Estado
               </th>
-              <th className="min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Ciudad
               </th>
-              <th className="min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Envió Detalles
               </th>
-              <th className="min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Doc Salud
               </th>
-              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Contrato<br />Firmado
               </th>
-              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 CCA
               </th>
-              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Contactado
               </th>
               {event.program_type === "TL" && (
                 <>
-                  <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+                  <th className={cn(HEADER_CELL_STICKY, "min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                     Normas TL
                   </th>
-                  <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+                  <th className={cn(HEADER_CELL_STICKY, "min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                     Reglas TL
                   </th>
                 </>
               )}
-              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Confirmó
               </th>
-              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Asistió
               </th>
-              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Retiró
               </th>
-              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Finalizó
               </th>
               {PAYMENT_METHOD_OPTIONS.map((m) => (
-                <th key={m} className="min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+                <th key={m} className={cn(HEADER_CELL_STICKY, "min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                   {m}
                 </th>
               ))}
-              <th className="min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Fee<br />Administrativo
               </th>
-              <th className="min-w-[320px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[320px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Observaciones
               </th>
-              <th className="min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Acciones
               </th>
             </tr>
@@ -410,74 +404,74 @@ function EventParticipantRow({
     ? "bg-red-100 dark:bg-red-950/95"
     : showBlue
       ? "bg-blue-100 dark:bg-blue-950/95"
-      : STICKY_BG;
+      : undefined;
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30">
       <td
         className={cn(
-          "sticky left-0 px-2 py-1 align-top text-center lg:px-4 lg:py-2",
-          firstFourCellBg,
-          STICKY_Z
+          "px-2 py-1 align-middle text-center lg:px-4 lg:py-2",
+          firstFourCellBg
         )}
       >
-        <EditableCell
-          value={row.person?.first_name ?? ""}
-          onBlur={(v) => onBlurPersonField(row.person_id, "first_name", v)}
-          placeholder="Nombre"
-        />
+        <div className="flex justify-center">
+          <EditableCell
+            value={row.person?.first_name ?? ""}
+            onBlur={(v) => onBlurPersonField(row.person_id, "first_name", v)}
+            placeholder="Nombre"
+          />
+        </div>
       </td>
       <td
         className={cn(
-          "sticky left-[120px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
-          firstFourCellBg,
-          STICKY_Z
+          "px-2 py-1 align-middle text-center lg:px-4 lg:py-2",
+          firstFourCellBg
         )}
       >
-        <EditableCell
-          value={row.person?.last_name ?? ""}
-          onBlur={(v) => onBlurPersonField(row.person_id, "last_name", v)}
-          placeholder="Apellidos"
-        />
+        <div className="flex justify-center">
+          <EditableCell
+            value={row.person?.last_name ?? ""}
+            onBlur={(v) => onBlurPersonField(row.person_id, "last_name", v)}
+            placeholder="Apellidos"
+          />
+        </div>
       </td>
       <td
         className={cn(
-          "sticky left-[240px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
-          firstFourCellBg,
-          STICKY_Z
+          "px-2 py-1 align-middle text-center lg:px-4 lg:py-2",
+          firstFourCellBg
         )}
       >
-        <EditableCell
-          value={row.person?.email ?? ""}
-          onBlur={(v) => onBlurPersonField(row.person_id, "email", v)}
-          placeholder="Correo"
-        />
+        <div className="flex justify-center">
+          <EditableCell
+            value={row.person?.email ?? ""}
+            onBlur={(v) => onBlurPersonField(row.person_id, "email", v)}
+            placeholder="Correo"
+          />
+        </div>
       </td>
       <td
         className={cn(
-          "sticky left-[420px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
-          firstFourCellBg,
-          STICKY_Z
+          "px-2 py-1 align-middle text-center lg:px-4 lg:py-2",
+          firstFourCellBg
         )}
       >
-        <EditableCell
-          value={row.person?.phone ?? ""}
-          onBlur={(v) => onBlurPersonField(row.person_id, "phone", v)}
-          placeholder="Teléfono"
-        />
+        <div className="flex justify-center">
+          <EditableCell
+            value={row.person?.phone ?? ""}
+            onBlur={(v) => onBlurPersonField(row.person_id, "phone", v)}
+            placeholder="Teléfono"
+          />
+        </div>
       </td>
-      <td
-        className={cn(
-          "sticky left-[540px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
-          STICKY_BG,
-          STICKY_Z
-        )}
-      >
-        <EditableCell
-          value={row.angel_name ?? ""}
-          onBlur={(v) => onBlurField(row.id, "angel_name", v)}
-          placeholder="Ángel"
-        />
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
+        <div className="flex justify-center">
+          <EditableCell
+            value={row.angel_name ?? ""}
+            onBlur={(v) => onBlurField(row.id, "angel_name", v)}
+            placeholder="Ángel"
+          />
+        </div>
       </td>
       <td className="px-2 py-1 align-top text-center lg:px-4 lg:py-2">
         <EstadoCell
