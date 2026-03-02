@@ -7,7 +7,6 @@ export default async function PeoplePage({
   searchParams: Promise<{
     city?: string;
     payment?: string;
-    backlog?: string;
     entrenamiento?: string;
     numero?: string;
   }>;
@@ -16,7 +15,6 @@ export default async function PeoplePage({
   const city = params.city && params.city !== "all" ? params.city : undefined;
   const paymentMethod =
     params.payment && params.payment !== "all" ? params.payment : undefined;
-  const backlog = params.backlog === "1" || params.backlog === "true";
   const programType =
     params.entrenamiento && params.entrenamiento.trim() ? params.entrenamiento.trim() : undefined;
   const eventCode =
@@ -26,7 +24,6 @@ export default async function PeoplePage({
     getFilteredPeople({
       city,
       paymentMethod,
-      backlog: backlog || undefined,
       programType,
       eventCode,
     }),
@@ -41,7 +38,6 @@ export default async function PeoplePage({
         counts={counts}
         filterCity={city ?? "all"}
         filterPayment={paymentMethod ?? "all"}
-        filterBacklog={backlog}
         filterEntrenamiento={programType ?? "all"}
         filterNumero={eventCode ?? "all"}
         eventFilterOptions={eventFilterOptions}

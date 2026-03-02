@@ -199,13 +199,19 @@ export function EventCrmView({
                 className="h-8 lg:h-9"
               />
             </div>
-            <Button type="submit" size="sm" disabled={isDatesPending}>
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              className="bg-white text-black border-input hover:bg-gray-100 hover:text-black"
+              disabled={isDatesPending}
+            >
               {isDatesPending ? "Guardando…" : "Guardar fechas"}
             </Button>
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              className="bg-black text-white hover:bg-black/90"
               disabled={generateReportPending}
               onClick={async () => {
                 setGenerateReportPending(true);

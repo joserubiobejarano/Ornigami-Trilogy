@@ -61,7 +61,6 @@ function buildSearchParams(
   updates: {
     city?: string;
     payment?: string;
-    backlog?: boolean;
     entrenamiento?: string;
     numero?: string;
   }
@@ -74,10 +73,6 @@ function buildSearchParams(
   if (updates.payment !== undefined) {
     if (updates.payment === "all") params.delete("payment");
     else params.set("payment", updates.payment);
-  }
-  if (updates.backlog !== undefined) {
-    if (!updates.backlog) params.delete("backlog");
-    else params.set("backlog", "1");
   }
   if (updates.entrenamiento !== undefined) {
     if (updates.entrenamiento === "all" || !updates.entrenamiento.trim()) params.delete("entrenamiento");
@@ -96,7 +91,6 @@ export function PeopleList({
   counts,
   filterCity,
   filterPayment,
-  filterBacklog,
   filterEntrenamiento,
   filterNumero,
   eventFilterOptions,
@@ -105,7 +99,6 @@ export function PeopleList({
   counts: PeopleCounts;
   filterCity: string;
   filterPayment: string;
-  filterBacklog: boolean;
   filterEntrenamiento: string;
   filterNumero: string;
   eventFilterOptions: EventFilterOptions;
@@ -138,14 +131,12 @@ export function PeopleList({
   const setFilters = (updates: {
     city?: string;
     payment?: string;
-    backlog?: boolean;
     entrenamiento?: string;
     numero?: string;
   }) => {
     const next = buildSearchParams(searchParams, {
       city: updates.city ?? filterCity,
       payment: updates.payment ?? filterPayment,
-      backlog: updates.backlog ?? filterBacklog,
       entrenamiento: updates.entrenamiento ?? filterEntrenamiento,
       numero: updates.numero ?? filterNumero,
     });
@@ -278,15 +269,6 @@ export function PeopleList({
                 aria-hidden
               />
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={filterBacklog ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setFilters({ backlog: !filterBacklog })}
-            >
-              Backlog ({counts.backlogTotal})
-            </Button>
           </div>
         </div>
       </div>

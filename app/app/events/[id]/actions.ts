@@ -318,6 +318,71 @@ export async function addParticipant(
   return { success: true };
 }
 
+export async function addExistingParticipantToEvent(
+  eventId: string,
+  personId: string
+): Promise<AddParticipantResult> {
+  const supabase = await createClient();
+
+  const { data: person, error: personError } = await supabase
+    .from("people")
+    .select("id, angel_name")
+    .eq("id", personId)
+    .single();
+
+  if (personError || !person?.id) {
+    return { success: false, error: "Persona no encontrada." };
+  }
+
+  const { data: existingEnroll } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("person_id", personId)
+    .maybeSingle();
+
+  if (existingEnroll?.id) {
+    return { success: false, error: "Esta persona ya está inscrita en este evento." };
+  }
+
+  const { data: enrollmentInserted, error: enrollError } = await supabase
+    .from("enrollments")
+    .insert({
+      event_id: eventId,
+      person_id: personId,
+      status: "pending_contract",
+      angel_name: (person.angel_name as string | null) ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (enrollError) {
+    if (enrollError.code === "23505") {
+      return { success: false, error: "Esta persona ya está inscrita en este evento." };
+    }
+    return { success: false, error: "No se pudo agregar al participante. Inténtalo de nuevo." };
+  }
+
+  if (!enrollmentInserted?.id) {
+    return { success: false, error: "No se pudo crear la inscripción." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  await writeAuditLog(supabase, {
+    entity_type: "enrollment",
+    entity_id: enrollmentInserted.id,
+    action: "insert",
+    changed_by: user?.id ?? null,
+    context: { event_id: eventId, person_id: personId, actor_email: user?.email ?? null },
+    changes: [],
+  });
+
+  revalidatePath(`/app/events/${eventId}`);
+  return { success: true };
+}
+
 export type UpdateEnrollmentFieldResult =
   | { success: true }
   | { success: false; error: string };

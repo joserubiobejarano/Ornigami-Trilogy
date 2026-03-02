@@ -5,9 +5,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { updateReportNotes, deleteReport } from "../actions";
-import { formatReportAsText, type ReportContent } from "../report-builder";
+import type { ReportContent } from "../report-builder";
 import { buildReportPdf } from "../report-pdf";
-import { Download, FileText, Pencil, Trash2 } from "lucide-react";
+import { FileText, Pencil, Trash2 } from "lucide-react";
 
 type Props = {
   eventId: string;
@@ -51,17 +51,6 @@ export function ReportViewClient({ eventId, initialContent }: Props) {
     }
   };
 
-  const handleDownload = () => {
-    const text = formatReportAsText({ ...initialContent, notes });
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `informe-cierre-${initialContent.title.replace(/\s+/g, "-")}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleDownloadPdf = () => {
     buildReportPdf({ ...initialContent, notes });
   };
@@ -88,16 +77,6 @@ export function ReportViewClient({ eventId, initialContent }: Props) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleDownload}
-          className="gap-2"
-        >
-          <Download className="size-4" />
-          Descargar TXT
-        </Button>
         <Button
           type="button"
           variant="outline"

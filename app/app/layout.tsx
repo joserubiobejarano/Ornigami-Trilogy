@@ -5,6 +5,7 @@ import { signOut } from "./actions";
 const navItems = [
   { href: "/app/events", label: "Entrenamientos" },
   { href: "/app/people", label: "Participantes" },
+  { href: "/app/bgk", label: "Backlogs" },
   { href: "/app/reports", label: "Reportes" },
   { href: "/app/historial", label: "Historial" },
   { href: "/app/administration", label: "Administración" },
