@@ -27,6 +27,7 @@ type BooleanField =
   | "contract_signed"
   | "health_doc_signed"
   | "cca_signed"
+  | "contacted"
   | "tl_norms_signed"
   | "tl_rules_signed"
   | "finalized"
@@ -207,12 +208,12 @@ export function EventParticipantsTable({
     />
     <div className="w-full max-w-full min-w-0 overflow-hidden rounded-md border">
       <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[1720px] text-sm">
+        <table className="w-full min-w-[1720px] text-xs lg:text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
               <th
                 className={cn(
-                  "sticky left-0 min-w-[120px] px-4 py-3 text-center align-middle font-medium",
+                  "sticky left-0 min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
                   STICKY_BG,
                   STICKY_Z
                 )}
@@ -221,7 +222,7 @@ export function EventParticipantsTable({
               </th>
               <th
                 className={cn(
-                  "sticky left-[120px] min-w-[120px] px-4 py-3 text-center align-middle font-medium",
+                  "sticky left-[120px] min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
                   STICKY_BG,
                   STICKY_Z
                 )}
@@ -230,7 +231,7 @@ export function EventParticipantsTable({
               </th>
               <th
                 className={cn(
-                  "sticky left-[240px] min-w-[180px] px-4 py-3 text-center align-middle font-medium",
+                  "sticky left-[240px] min-w-[180px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
                   STICKY_BG,
                   STICKY_Z
                 )}
@@ -239,7 +240,7 @@ export function EventParticipantsTable({
               </th>
               <th
                 className={cn(
-                  "sticky left-[420px] min-w-[120px] px-4 py-3 text-center align-middle font-medium",
+                  "sticky left-[420px] min-w-[120px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
                   STICKY_BG,
                   STICKY_Z
                 )}
@@ -248,65 +249,68 @@ export function EventParticipantsTable({
               </th>
               <th
                 className={cn(
-                  "sticky left-[540px] min-w-[100px] px-4 py-3 text-center align-middle font-medium",
+                  "sticky left-[540px] min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3",
                   STICKY_BG,
                   STICKY_Z
                 )}
               >
                 Ángel
               </th>
-              <th className="min-w-[140px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Estado
               </th>
-              <th className="min-w-[100px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Ciudad
               </th>
-              <th className="min-w-[110px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Envió Detalles
               </th>
-              <th className="min-w-[100px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Doc Salud
               </th>
-              <th className="min-w-[80px] px-4 py-3 text-center align-middle font-medium">
-                Contrato
+              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+                Contrato<br />Firmado
               </th>
-              <th className="min-w-[80px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 CCA
+              </th>
+              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
+                Contactado
               </th>
               {event.program_type === "TL" && (
                 <>
-                  <th className="min-w-[90px] px-4 py-3 text-center align-middle font-medium">
+                  <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                     Normas TL
                   </th>
-                  <th className="min-w-[90px] px-4 py-3 text-center align-middle font-medium">
+                  <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                     Reglas TL
                   </th>
                 </>
               )}
-              <th className="min-w-[90px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[90px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Confirmó
               </th>
-              <th className="min-w-[80px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Asistió
               </th>
-              <th className="min-w-[80px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Retiró
               </th>
-              <th className="min-w-[80px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Finalizó
               </th>
               {PAYMENT_METHOD_OPTIONS.map((m) => (
-                <th key={m} className="min-w-[70px] px-4 py-3 text-center align-middle font-medium">
+                <th key={m} className="min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                   {m}
                 </th>
               ))}
-              <th className="min-w-[70px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Fee<br />Administrativo
               </th>
-              <th className="min-w-[320px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[320px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Observaciones
               </th>
-              <th className="min-w-[140px] px-4 py-3 text-center align-middle font-medium">
+              <th className="min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3">
                 Acciones
               </th>
             </tr>
@@ -315,8 +319,8 @@ export function EventParticipantsTable({
             {              enrollments.length === 0 ? (
               <tr>
                 <td
-                  colSpan={event.program_type === "TL" ? 25 : 23}
-                  className="px-4 py-8 text-center text-muted-foreground"
+                  colSpan={event.program_type === "TL" ? 26 : 24}
+                  className="px-2 py-4 text-center text-muted-foreground lg:px-4 lg:py-8"
                 >
                   Ningún participante coincide con esta vista.
                 </td>
@@ -412,7 +416,7 @@ function EventParticipantRow({
     <tr className="border-b last:border-0 hover:bg-muted/30">
       <td
         className={cn(
-          "sticky left-0 px-4 py-2 align-top text-center",
+          "sticky left-0 px-2 py-1 align-top text-center lg:px-4 lg:py-2",
           firstFourCellBg,
           STICKY_Z
         )}
@@ -425,7 +429,7 @@ function EventParticipantRow({
       </td>
       <td
         className={cn(
-          "sticky left-[120px] px-4 py-2 align-top text-center",
+          "sticky left-[120px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
           firstFourCellBg,
           STICKY_Z
         )}
@@ -438,7 +442,7 @@ function EventParticipantRow({
       </td>
       <td
         className={cn(
-          "sticky left-[240px] px-4 py-2 align-top text-center",
+          "sticky left-[240px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
           firstFourCellBg,
           STICKY_Z
         )}
@@ -451,7 +455,7 @@ function EventParticipantRow({
       </td>
       <td
         className={cn(
-          "sticky left-[420px] px-4 py-2 align-top text-center",
+          "sticky left-[420px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
           firstFourCellBg,
           STICKY_Z
         )}
@@ -464,7 +468,7 @@ function EventParticipantRow({
       </td>
       <td
         className={cn(
-          "sticky left-[540px] px-4 py-2 align-top text-center",
+          "sticky left-[540px] px-2 py-1 align-top text-center lg:px-4 lg:py-2",
           STICKY_BG,
           STICKY_Z
         )}
@@ -475,52 +479,58 @@ function EventParticipantRow({
           placeholder="Ángel"
         />
       </td>
-      <td className="px-4 py-2 align-top text-center">
+      <td className="px-2 py-1 align-top text-center lg:px-4 lg:py-2">
         <EstadoCell
           row={row}
           onBlurField={onBlurField}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <CiudadSelectCell
           value={row.city}
           eventCity={eventCity}
           onChange={(v) => onBlurField(row.id, "city", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.details_sent}
           onChange={(v) => onBooleanChange(row.id, "details_sent", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.health_doc_signed ?? false}
           onChange={(v) => onBooleanChange(row.id, "health_doc_signed", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.contract_signed}
           onChange={(v) => onBooleanChange(row.id, "contract_signed", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.cca_signed ?? false}
           onChange={(v) => onBooleanChange(row.id, "cca_signed", v)}
         />
       </td>
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
+        <BooleanCheckboxCell
+          value={row.contacted ?? false}
+          onChange={(v) => onBooleanChange(row.id, "contacted", v)}
+        />
+      </td>
       {event.program_type === "TL" && (
         <>
-          <td className="px-4 py-2 align-middle text-center">
+          <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
             <BooleanCheckboxCell
               value={row.tl_norms_signed ?? false}
               onChange={(v) => onBooleanChange(row.id, "tl_norms_signed", v)}
             />
           </td>
-          <td className="px-4 py-2 align-middle text-center">
+          <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
             <BooleanCheckboxCell
               value={row.tl_rules_signed ?? false}
               onChange={(v) => onBooleanChange(row.id, "tl_rules_signed", v)}
@@ -528,70 +538,70 @@ function EventParticipantRow({
           </td>
         </>
       )}
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.confirmed}
           onChange={(v) => onBooleanChange(row.id, "confirmed", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.attended}
           onChange={(v) => onBooleanChange(row.id, "attended", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.withdrew}
           onChange={(v) => onBooleanChange(row.id, "withdrew", v)}
         />
       </td>
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.finalized}
           onChange={(v) => onBooleanChange(row.id, "finalized", v)}
         />
       </td>
       {PAYMENT_METHOD_OPTIONS.map((methodUi) => (
-        <td key={methodUi} className="px-4 py-2 align-middle text-center">
+        <td key={methodUi} className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
           <PaymentAmountCell
             value={row.payments_by_method?.[methodUi.toLowerCase()] ?? null}
             onChange={(v) => onPaymentAmountChange(row.id, methodUi, v)}
           />
         </td>
       ))}
-      <td className="px-4 py-2 align-middle text-center">
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <FeeInputCell
           value={feeDisplayValue}
           methodUi=""
           onChange={(fee) => onPaymentFeeChange(row.id, fee)}
         />
       </td>
-      <td className="min-w-[320px] px-4 py-2 align-top text-center">
+      <td className="min-w-[320px] px-2 py-1 align-top text-center lg:px-4 lg:py-2">
         <EditableCell
           value={row.admin_notes ?? ""}
           onBlur={(v) => onBlurField(row.id, "admin_notes", v)}
           placeholder="Notas"
         />
       </td>
-      <td className="px-4 py-2 align-middle">
+      <td className="px-2 py-1 align-middle lg:px-4 lg:py-2">
         <div className="flex justify-center">
-          <div className="grid grid-cols-[1fr_auto] gap-1.5 items-center min-w-[180px]">
-            <div className="flex justify-end min-h-8">
+          <div className="grid grid-cols-[1fr_auto] gap-1 items-center min-w-[160px] lg:gap-1.5 lg:min-w-[180px]">
+            <div className="flex justify-end min-h-7 lg:min-h-8">
               {onTransfer ? (
-                <Button type="button" variant="outline" size="sm" onClick={onTransfer}>
+                <Button type="button" variant="outline" size="sm" className="text-xs lg:text-sm" onClick={onTransfer}>
                   Transferir cupo
                 </Button>
               ) : (
                 <span className="inline-block w-[100px]" aria-hidden />
               )}
             </div>
-            <div className="flex justify-start min-h-8">
+            <div className="flex justify-start min-h-7 lg:min-h-8">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive lg:text-sm"
                 onClick={() => onRemove(row.id)}
               >
                 Eliminar
@@ -617,7 +627,7 @@ function BooleanCheckboxCell({
         type="checkbox"
         checked={value}
         onChange={(e) => onChange(e.target.checked ? "TRUE" : "FALSE")}
-        className="h-4 w-4 shrink-0 rounded border border-gray-400 bg-background accent-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-0"
+        className="h-3.5 w-3.5 shrink-0 rounded border border-gray-400 bg-background accent-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-0 lg:h-4 lg:w-4"
         aria-label={value ? "Sí" : "No"}
       />
     </div>
@@ -689,7 +699,7 @@ function EstadoMultiSelectCell({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 min-w-[100px] justify-center gap-1 px-2 text-center font-normal"
+          className="h-7 min-w-[90px] justify-center gap-1 px-2 text-center font-normal lg:h-8 lg:min-w-[100px]"
         >
           {displayLabel ? (
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -739,7 +749,7 @@ function CiudadSelectCell({
 
   return (
     <select
-      className="h-8 min-w-[90px] rounded border border-input bg-background px-2 py-1 text-center text-sm"
+      className="h-7 min-w-[80px] rounded border border-input bg-background px-2 py-1 text-center text-sm lg:h-8 lg:min-w-[90px]"
       value={selectValue}
       onChange={(e) => onChange(e.target.value || "")}
     >
@@ -780,7 +790,7 @@ function PaymentAmountCell({
     <Input
       type="text"
       inputMode="numeric"
-      className="h-8 w-14 px-2 py-1 text-center text-sm"
+      className="h-7 w-12 px-2 py-1 text-center text-sm lg:h-8 lg:w-14"
       value={local}
       onChange={(e) => setLocal(e.target.value)}
       onBlur={handleBlur}
@@ -818,7 +828,7 @@ function FeeInputCell({
     <Input
       type="text"
       inputMode="decimal"
-      className="h-8 w-16 px-2 py-1 text-center text-sm"
+      className="h-7 w-14 px-2 py-1 text-center text-sm lg:h-8 lg:w-16"
       value={local}
       onChange={(e) => setLocal(e.target.value)}
       onBlur={handleBlur}
@@ -865,7 +875,7 @@ function EditableCell({
   if (editing) {
     return (
       <Input
-        className="min-w-[120px] h-8 text-center text-sm"
+        className="min-w-[120px] h-7 text-center text-sm lg:h-8"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={handleBlur}
@@ -880,7 +890,7 @@ function EditableCell({
     <button
       type="button"
       className={cn(
-        "min-w-[120px] block w-full rounded border border-transparent px-2 py-1.5 text-center text-sm hover:border-input hover:bg-muted/50",
+        "min-w-[120px] block w-full rounded border border-transparent px-2 py-1 text-center text-sm hover:border-input hover:bg-muted/50 lg:py-1.5",
         !displayValue && "text-muted-foreground"
       )}
       onClick={() => setEditing(true)}

@@ -25,6 +25,7 @@ const BOOLEAN_FIELDS = [
   "confirmed",
   "contract_signed",
   "cca_signed",
+  "contacted",
   "health_doc_signed",
   "tl_norms_signed",
   "tl_rules_signed",
@@ -94,6 +95,7 @@ export async function getEventWithEnrollments(
       confirmed,
       contract_signed,
       cca_signed,
+      contacted,
       admin_notes,
       angel_name,
       city,
@@ -184,6 +186,7 @@ export async function getEventWithEnrollments(
     confirmed: boolean;
     contract_signed: boolean;
     cca_signed: boolean;
+    contacted: boolean;
     admin_notes: string | null;
     angel_name: string | null;
     city: string | null;
@@ -219,6 +222,7 @@ export async function getEventWithEnrollments(
       confirmed: r.confirmed,
       contract_signed: r.contract_signed,
       cca_signed: r.cca_signed,
+      contacted: r.contacted ?? false,
       admin_notes: r.admin_notes,
       angel_name: r.angel_name,
       city: r.city ?? null,

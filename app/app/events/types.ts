@@ -31,6 +31,7 @@ export type EnrollmentRow = {
   confirmed: boolean;
   contract_signed: boolean;
   cca_signed: boolean;
+  contacted: boolean;
   admin_notes: string | null;
   angel_name: string | null;
   city: string | null;

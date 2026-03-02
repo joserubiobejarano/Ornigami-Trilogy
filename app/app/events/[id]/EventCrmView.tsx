@@ -152,15 +152,15 @@ export function EventCrmView({
   const isActive = (v: string | null) => view === v || (!view && v === null);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-3 lg:space-y-4">
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/app/events">← Volver a entrenamientos</Link>
         </Button>
       </div>
 
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold md:text-2xl">{eventTitle(data)}</h1>
+        <h1 className="text-lg font-semibold md:text-xl lg:text-2xl">{eventTitle(data)}</h1>
         <p className="text-muted-foreground">
           {data.start_date && data.end_date
             ? formatDateRange(data.start_date, data.end_date)
@@ -173,8 +173,8 @@ export function EventCrmView({
           <input type="hidden" name="program_type" value={data.program_type} />
           <input type="hidden" name="code" value={data.code} />
           <input type="hidden" name="city" value={data.city} />
-          <div className="min-w-0 mb-6">
-            <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0 mb-4 lg:mb-6">
+            <div className="flex flex-wrap items-end gap-2 lg:gap-3">
             <div className="space-y-1">
               <Label htmlFor="event-start_date" className="text-xs text-muted-foreground">
                 Inicio
@@ -184,7 +184,7 @@ export function EventCrmView({
                 name="start_date"
                 type="date"
                 defaultValue={toLocalDate(data.start_date)}
-                className="h-9"
+                className="h-8 lg:h-9"
               />
             </div>
             <div className="space-y-1">
@@ -196,7 +196,7 @@ export function EventCrmView({
                 name="end_date"
                 type="date"
                 defaultValue={toLocalDate(data.end_date)}
-                className="h-9"
+                className="h-8 lg:h-9"
               />
             </div>
             <Button type="submit" size="sm" disabled={isDatesPending}>
@@ -234,8 +234,8 @@ export function EventCrmView({
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-start gap-6 mb-5">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-start gap-4 mb-3 lg:gap-6 lg:mb-5">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
             <Button type="button" size="sm" onClick={() => setAddModalOpen(true)}>
               Agregar participante
             </Button>
@@ -281,21 +281,21 @@ export function EventCrmView({
             </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-2 mt-3 md:flex-row md:flex-nowrap md:items-end md:gap-3 md:overflow-x-auto md:min-w-0">
+        <div className="flex flex-col gap-2 mt-3 md:flex-row md:flex-nowrap md:items-end md:gap-2 md:overflow-x-auto md:min-w-0 lg:gap-3">
           <div className="w-full min-w-0 md:flex-1 md:max-w-md">
             <Input
               type="search"
               placeholder="Buscar por nombre, correo o teléfono…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 min-w-0 w-full"
+              className="h-8 min-w-0 w-full lg:h-9"
             />
           </div>
           <input type="hidden" name="coordinator" value={coordinator} />
           <input type="hidden" name="entrenadores" value={entrenadores} />
           <input type="hidden" name="capitan_mentores" value={capitanMentores} />
           <input type="hidden" name="mentores" value={mentores} />
-          <div className="flex overflow-x-auto gap-2 shrink-0 items-end md:gap-3">
+          <div className="flex overflow-x-auto gap-2 shrink-0 items-end md:gap-2 lg:gap-3">
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <Label htmlFor="event-coordinator" className="text-sm text-foreground whitespace-nowrap">
                 Coordinador
@@ -306,7 +306,7 @@ export function EventCrmView({
                 onChange={(e) => setCoordinator(e.target.value)}
                 onBlur={() => saveStaffField("coordinator", coordinator)}
                 placeholder="Nombres"
-                className="h-9 min-w-[100px] md:min-w-[140px] text-sm !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
+                className="h-8 min-w-[90px] text-sm lg:h-9 lg:min-w-[140px] !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
               />
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -319,7 +319,7 @@ export function EventCrmView({
                 onChange={(e) => setEntrenadores(e.target.value)}
                 onBlur={() => saveStaffField("entrenadores", entrenadores)}
                 placeholder="Nombres"
-                className="h-9 min-w-[100px] md:min-w-[140px] text-sm !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
+                className="h-8 min-w-[90px] text-sm lg:h-9 lg:min-w-[140px] !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
               />
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -332,7 +332,7 @@ export function EventCrmView({
                 onChange={(e) => setCapitanMentores(e.target.value)}
                 onBlur={() => saveStaffField("capitan_mentores", capitanMentores)}
                 placeholder="Nombres"
-                className="h-9 min-w-[100px] md:min-w-[140px] text-sm !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
+                className="h-8 min-w-[90px] text-sm lg:h-9 lg:min-w-[140px] !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
               />
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -345,7 +345,7 @@ export function EventCrmView({
                 onChange={(e) => setMentores(e.target.value)}
                 onBlur={() => saveStaffField("mentores", mentores)}
                 placeholder="Nombres"
-                className="h-9 min-w-[100px] md:min-w-[140px] text-sm !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
+                className="h-8 min-w-[90px] text-sm lg:h-9 lg:min-w-[140px] !bg-transparent border-transparent dark:!bg-transparent focus-visible:!bg-transparent focus-visible:dark:!bg-transparent placeholder-shown:bg-background placeholder-shown:border placeholder-shown:border-input [&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_9999px_var(--background)]"
               />
             </div>
           </div>

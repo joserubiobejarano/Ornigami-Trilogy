@@ -216,14 +216,20 @@ export async function duplicateEvent(
     const { data: rawSourceEnrollments } = await supabase
       .from("enrollments")
       .select(
-        "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew"
+        "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, contacted, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew"
       )
       .eq("event_id", sourceEventId);
 
     const sourceEnrollments =
-      rawSourceEnrollments?.filter(
-        (e: { status?: string }) => e.status !== "transferred_out"
-      ) ?? [];
+      rawSourceEnrollments?.filter((e: { status?: string }) => {
+        if (e.status === "transferred_out") return false;
+        const tags = (e.status ?? "")
+          .split(",")
+          .map((s) => s.trim().toUpperCase());
+        if (tags.includes("BGK")) return false;
+        const s = (e.status ?? "").trim();
+        return s === "" || s === "cupo_recibido";
+      }) ?? [];
 
     if (sourceEnrollments.length > 0) {
       const enrollmentsToInsert = sourceEnrollments.map(
@@ -236,6 +242,7 @@ export async function duplicateEvent(
           confirmed: false,
           contract_signed: e.contract_signed ?? false,
           cca_signed: false,
+          contacted: false,
           admin_notes: e.admin_notes ?? null,
           angel_name: e.angel_name ?? null,
           city: e.city ?? null,
