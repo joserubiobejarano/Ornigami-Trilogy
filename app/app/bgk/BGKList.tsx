@@ -4,8 +4,14 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { BGKRow } from "./actions";
 import { deletePerson } from "@/app/app/people/actions";
+import { exportBGKCSV, buildBGKTablePdf } from "./export-table";
 
 function displayName(row: BGKRow): string {
   const parts = [row.firstName, row.lastName].filter(Boolean);
@@ -63,14 +69,46 @@ export function BGKList({ rows }: { rows: BGKRow[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="max-w-md min-w-[200px]">
-        <Input
-          type="search"
-          placeholder="Buscar por nombre, correo o teléfono…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-10"
-        />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="max-w-md min-w-[200px] flex-1">
+          <Input
+            type="search"
+            placeholder="Buscar por nombre, correo o teléfono…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10"
+          />
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-white text-black border-input hover:bg-gray-100 hover:text-black"
+            >
+              Descargar ▾
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-40 p-2">
+            <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => exportBGKCSV(filtered, "backlogs")}
+                className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted/50"
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => buildBGKTablePdf(filtered)}
+                className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted/50"
+              >
+                PDF
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="overflow-hidden rounded-md border">

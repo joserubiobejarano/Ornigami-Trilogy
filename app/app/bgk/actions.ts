@@ -23,6 +23,7 @@ type RawRow = {
   id: string;
   person_id: string;
   status: string;
+  admin_notes: string | null;
   event: EventRelation | EventRelation[] | null;
   person: PersonRelation | PersonRelation[] | null;
 };
@@ -66,6 +67,7 @@ export type BGKRow = {
   createdAt: string | null;
   entrenamientoLabel: string;
   daysRemaining: number | null;
+  admin_notes: string | null;
 };
 
 export async function getBGKEnrollments(): Promise<BGKRow[]> {
@@ -74,7 +76,7 @@ export async function getBGKEnrollments(): Promise<BGKRow[]> {
   const { data: rows = [] } = await supabase
     .from("enrollments")
     .select(
-      "id, person_id, status, event:events(program_type, code, scheduled_deletion_at), person:people(first_name, last_name, email, phone, city, created_at)"
+      "id, person_id, status, admin_notes, event:events(program_type, code, scheduled_deletion_at), person:people(first_name, last_name, email, phone, city, created_at)"
     )
     .ilike("status", "%BGK%");
 
@@ -100,6 +102,7 @@ export async function getBGKEnrollments(): Promise<BGKRow[]> {
       createdAt: person.created_at ?? null,
       entrenamientoLabel: buildEntrenamientoLabel(event),
       daysRemaining: daysRemaining(person.created_at),
+      admin_notes: r.admin_notes ?? null,
     });
   }
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveOrCreatePersonAndEnroll } from "@/lib/enrollment";
+import { removeBGKFromPriorEnrollments, resolveOrCreatePersonAndEnroll } from "@/lib/enrollment";
 import { writeAuditLog } from "@/lib/audit";
 import type {
   EnrollmentRow,
@@ -315,6 +315,8 @@ export async function addParticipant(
   });
 
   revalidatePath(`/app/events/${eventId}`);
+  revalidatePath("/app/bgk");
+  revalidatePath("/app/people");
   return { success: true };
 }
 
@@ -324,15 +326,21 @@ export async function addExistingParticipantToEvent(
 ): Promise<AddParticipantResult> {
   const supabase = await createClient();
 
-  const { data: person, error: personError } = await supabase
-    .from("people")
-    .select("id, angel_name")
-    .eq("id", personId)
-    .single();
+  const [{ data: person, error: personError }, { data: eventRow, error: eventError }] =
+    await Promise.all([
+      supabase.from("people").select("id, angel_name, city").eq("id", personId).single(),
+      supabase.from("events").select("city").eq("id", eventId).single(),
+    ]);
 
   if (personError || !person?.id) {
     return { success: false, error: "Persona no encontrada." };
   }
+
+  const eventCity =
+    !eventError && eventRow && typeof (eventRow as { city?: string | null }).city === "string"
+      ? ((eventRow as { city: string }).city?.trim() || null)
+      : null;
+  const personCity = (person as { city?: string | null }).city ?? null;
 
   const { data: existingEnroll } = await supabase
     .from("enrollments")
@@ -345,14 +353,25 @@ export async function addExistingParticipantToEvent(
     return { success: false, error: "Esta persona ya está inscrita en este evento." };
   }
 
+  const enrollmentInsert: {
+    event_id: string;
+    person_id: string;
+    status: string;
+    angel_name: string | null;
+    city?: string | null;
+  } = {
+    event_id: eventId,
+    person_id: personId,
+    status: "pending_contract",
+    angel_name: (person.angel_name as string | null) ?? null,
+  };
+  if (eventCity != null) {
+    enrollmentInsert.city = eventCity;
+  }
+
   const { data: enrollmentInserted, error: enrollError } = await supabase
     .from("enrollments")
-    .insert({
-      event_id: eventId,
-      person_id: personId,
-      status: "pending_contract",
-      angel_name: (person.angel_name as string | null) ?? null,
-    })
+    .insert(enrollmentInsert)
     .select("id")
     .single();
 
@@ -365,6 +384,12 @@ export async function addExistingParticipantToEvent(
 
   if (!enrollmentInserted?.id) {
     return { success: false, error: "No se pudo crear la inscripción." };
+  }
+
+  await removeBGKFromPriorEnrollments(supabase, personId, enrollmentInserted.id);
+
+  if (eventCity != null && (!personCity || !String(personCity).trim())) {
+    await supabase.from("people").update({ city: eventCity }).eq("id", personId);
   }
 
   const {
@@ -380,6 +405,8 @@ export async function addExistingParticipantToEvent(
   });
 
   revalidatePath(`/app/events/${eventId}`);
+  revalidatePath("/app/bgk");
+  revalidatePath("/app/people");
   return { success: true };
 }
 
@@ -429,11 +456,12 @@ export async function updateEnrollmentField(
 
   const { data: enrollment, error: fetchError } = await supabase
     .from("enrollments")
-    .select(`event_id, ${field}`)
+    .select(`event_id, person_id, ${field}`)
     .eq("id", enrollmentId)
     .single();
 
   const eventId = (enrollment as { event_id?: string } | null)?.event_id;
+  const personId = (enrollment as { person_id?: string } | null)?.person_id;
   if (fetchError || !eventId) {
     return { success: false, error: "Inscripción no encontrada." };
   }
@@ -449,6 +477,23 @@ export async function updateEnrollmentField(
     return { success: false, error: "No se pudo actualizar. Inténtalo de nuevo." };
   }
 
+  if (
+    field === "city" &&
+    personId &&
+    typeof payloadValue === "string" &&
+    payloadValue.trim()
+  ) {
+    const { data: personRow } = await supabase
+      .from("people")
+      .select("city")
+      .eq("id", personId)
+      .single();
+    const currentCity = (personRow as { city?: string | null } | null)?.city;
+    if (!currentCity || !String(currentCity).trim()) {
+      await supabase.from("people").update({ city: payloadValue.trim() }).eq("id", personId);
+    }
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -462,6 +507,7 @@ export async function updateEnrollmentField(
   });
 
   revalidatePath(`/app/events/${eventId}`);
+  revalidatePath("/app/people");
   return { success: true };
 }
 
@@ -1000,6 +1046,9 @@ export async function transferEnrollmentSpot(
   const cantidad = fromEnrollment.cantidad != null ? Number(fromEnrollment.cantidad) : null;
   const transferFee = Math.round((cantidad ?? 0) * 0.1);
   const receivedNote = formatTransferNoteFrom(transferrerFirstName, transferrerLastName);
+  const initialAdminNotes = notes?.trim()
+    ? appendAdminNote(receivedNote, notes.trim())
+    : receivedNote;
 
   const { data: toEnrollment, error: insertEnrollErr } = await supabase
     .from("enrollments")
@@ -1009,7 +1058,7 @@ export async function transferEnrollmentSpot(
       status: "cupo_recibido",
       angel_name:
         (target.angel_name?.trim() || (fromEnrollment.angel_name as string | null) || null) ?? null,
-      admin_notes: receivedNote,
+      admin_notes: initialAdminNotes,
     })
     .select("id")
     .single();
@@ -1348,6 +1397,9 @@ export async function searchPeopleNotInEvent(
   eventId: string,
   searchQuery: string
 ): Promise<PersonOption[]> {
+  const trimmed = searchQuery.trim();
+  if (trimmed === "") return [];
+
   const supabase = await createClient();
   const { data: enrolled } = await supabase
     .from("enrollments")
@@ -1357,23 +1409,21 @@ export async function searchPeopleNotInEvent(
     (enrolled ?? []).map((r: { person_id: string }) => r.person_id)
   );
 
+  const escaped = trimmed.replace(/"/g, '""');
+  const pattern = `"%${escaped}%"`;
+
   let query = supabase
     .from("people")
     .select("id, first_name, last_name, email")
     .limit(50)
     .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
+    .order("first_name", { ascending: true })
+    .or(
+      `first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern}`
+    );
 
   if (enrolledIds.size > 0) {
     query = query.not("id", "in", `(${Array.from(enrolledIds).join(",")})`);
-  }
-
-  const trimmed = searchQuery.trim();
-  if (trimmed) {
-    const pattern = `%${trimmed}%`;
-    query = query.or(
-      `first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern}`
-    );
   }
 
   const { data: people } = await query;

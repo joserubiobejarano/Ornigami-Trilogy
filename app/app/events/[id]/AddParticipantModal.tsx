@@ -100,6 +100,17 @@ export function AddParticipantModal({
   useEffect(() => {
     if (step !== "existing" || !eventId) return;
 
+    const trimmed = searchQuery.trim();
+    if (trimmed === "") {
+      setPeople([]);
+      setPeopleLoading(false);
+      if (debouncedSearch.current) {
+        clearTimeout(debouncedSearch.current);
+        debouncedSearch.current = null;
+      }
+      return;
+    }
+
     const runSearch = () => {
       setPeopleLoading(true);
       searchPeopleNotInEvent(eventId, searchQuery)
@@ -196,6 +207,10 @@ export function AddParticipantModal({
             </div>
             {peopleLoading ? (
               <p className="text-sm text-muted-foreground">Cargando…</p>
+            ) : searchQuery.trim() === "" ? (
+              <p className="text-sm text-muted-foreground">
+                Escribe nombre, apellido o correo para buscar.
+              </p>
             ) : people.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Ningún participante coincide con tu búsqueda.
