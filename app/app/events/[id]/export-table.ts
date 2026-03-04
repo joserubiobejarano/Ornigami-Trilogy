@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { EnrollmentRow, EventRow } from "@/app/app/events/types";
+import { programTypeToDisplay } from "@/lib/program-display";
 
 const PAYMENT_METHOD_OPTIONS = ["Square", "Afterpay", "Zelle", "Cash", "TDC"];
 
@@ -88,9 +89,11 @@ export function buildParticipantsTablePdf(
   doc.setFontSize(fontSize);
 
   const eventCode = event.code || "evento";
-  const title = `Participantes - ${eventCode}`;
+  const eventTitle =
+    `${programTypeToDisplay(event.program_type)} ${event.code}`.trim() ||
+    "Evento";
   doc.setFontSize(10);
-  doc.text(title, margin, margin + lineHeight);
+  doc.text(eventTitle, margin, margin + lineHeight);
   doc.setFontSize(fontSize);
   let y = margin + lineHeight * 2.5;
 
