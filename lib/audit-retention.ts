@@ -1,9 +1,7 @@
 "use server";
 
 import { createServiceRoleClient } from "@/lib/supabase/service";
-
-/** Delete audit_log rows older than this many days. */
-export const AUDIT_LOG_RETENTION_DAYS = 20;
+import { AUDIT_LOG_RETENTION_DAYS } from "@/lib/audit-retention-config";
 
 /**
  * Deletes audit_log rows where changed_at is older than the retention period.

@@ -1,8 +1,6 @@
 import { getAuditLogAll } from "@/lib/audit-actions";
-import {
-  deleteAuditLogsOlderThan,
-  AUDIT_LOG_RETENTION_DAYS,
-} from "@/lib/audit-retention";
+import { deleteAuditLogsOlderThan } from "@/lib/audit-retention";
+import { AUDIT_LOG_RETENTION_DAYS } from "@/lib/audit-retention-config";
 import { AuditTimeline } from "@/components/audit-timeline";
 
 export default async function HistorialPage() {
