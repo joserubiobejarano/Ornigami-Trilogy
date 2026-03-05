@@ -17,8 +17,15 @@ export type ReportContent = {
   mentores: string;
   capitanMentores: string;
   participantesIniciaron: number;
+  participantesNoAsistieron: number;
+  participantesRetiraron: number;
   participantesCulminaron: number;
+  entroladosProposito: number;
+  entroladosConexion: number;
   paymentLines: { method: string; count: number; sum: number }[];
+  feeAdministrativoSum: number;
+  feeAdministrativoCount: number;
+  pagosBacklogsCount: number;
   total: number;
   notes: string;
 };
@@ -47,6 +54,23 @@ function formatEndDate(iso: string | null): string {
   }
 }
 
+function hasBGKStatus(status: string | null | undefined): boolean {
+  if (!status?.trim()) return false;
+  const tags = status.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  return tags.includes("BGK");
+}
+
+function hasAnyPayment(e: EnrollmentRow): boolean {
+  const methods = e.payments_by_method ?? {};
+  for (const key of Object.keys(methods)) {
+    const amount = methods[key];
+    if (amount != null && Number(amount) > 0) return true;
+  }
+  const fee = e.payment_fee;
+  if (fee != null && Number(fee) > 0) return true;
+  return false;
+}
+
 export function buildReportContent(
   event: EventRow,
   enrollments: EnrollmentRow[],
@@ -55,6 +79,10 @@ export function buildReportContent(
   const title = `${programTypeToDisplay(event.program_type)} ${event.code}`;
   const attendedCount = enrollments.filter((e) => e.attended).length;
   const finalizedCount = enrollments.filter((e) => e.finalized).length;
+  const participantesNoAsistieron = enrollments.filter((e) => e.no_asistio).length;
+  const participantesRetiraron = enrollments.filter((e) => e.withdrew).length;
+  const entroladosProposito = enrollments.filter((e) => e.tl_enrolado === "Proposito").length;
+  const entroladosConexion = enrollments.filter((e) => e.tl_enrolado === "Conexión").length;
 
   const paymentLines: { method: string; count: number; sum: number }[] = [];
   let total = 0;
@@ -73,6 +101,21 @@ export function buildReportContent(
     paymentLines.push({ method: label, count, sum });
   }
 
+  let feeAdministrativoSum = 0;
+  let feeAdministrativoCount = 0;
+  for (const e of enrollments) {
+    const fee = e.payment_fee;
+    if (fee != null && Number(fee) > 0) {
+      feeAdministrativoSum += Number(fee);
+      feeAdministrativoCount += 1;
+    }
+  }
+  total += feeAdministrativoSum;
+
+  const pagosBacklogsCount = enrollments.filter(
+    (e) => hasBGKStatus(e.status) && hasAnyPayment(e)
+  ).length;
+
   return {
     title,
     endDate: formatEndDate(event.end_date),
@@ -81,8 +124,15 @@ export function buildReportContent(
     mentores: event.mentores?.trim() ?? "—",
     capitanMentores: event.capitan_mentores?.trim() ?? "—",
     participantesIniciaron: attendedCount,
+    participantesNoAsistieron,
+    participantesRetiraron,
     participantesCulminaron: finalizedCount,
+    entroladosProposito,
+    entroladosConexion,
     paymentLines,
+    feeAdministrativoSum,
+    feeAdministrativoCount,
+    pagosBacklogsCount,
     total,
     notes: notes?.trim() ?? "",
   };
@@ -101,7 +151,11 @@ export function formatReportAsText(content: ReportContent): string {
     `Capitán mentores: ${content.capitanMentores}`,
     "",
     `Participantes que iniciaron: ${content.participantesIniciaron}`,
+    `Participantes que no asistieron: ${content.participantesNoAsistieron}`,
+    `Participantes que se retiraron: ${content.participantesRetiraron}`,
     `Participantes que culminaron: ${content.participantesCulminaron}`,
+    `Entrolados Proposito: ${content.entroladosProposito}`,
+    `Entrolados Conexión: ${content.entroladosConexion}`,
     "",
     "Pagos",
   ];
@@ -114,6 +168,12 @@ export function formatReportAsText(content: ReportContent): string {
     }
   }
 
+  if (content.feeAdministrativoCount > 0 || content.feeAdministrativoSum > 0) {
+    lines.push(
+      `Fee Administrativo: ${content.feeAdministrativoCount} participantes - ${formatCurrency(content.feeAdministrativoSum)}`
+    );
+  }
+  lines.push(`Pagos Backlogs: ${content.pagosBacklogsCount} participantes`);
   lines.push(`Total = ${formatCurrency(content.total)}`);
   lines.push("");
   lines.push("Notas");

@@ -71,6 +71,9 @@ const HEADER_MAP: Record<
   [normalizeHeader("Normas TL")]: { type: "enrollment", field: "tl_norms_signed" },
   [normalizeHeader("Reglas TL")]: { type: "enrollment", field: "tl_rules_signed" },
   [normalizeHeader("Retiró")]: { type: "enrollment", field: "withdrew" },
+  [normalizeHeader("No Asistió")]: { type: "enrollment", field: "no_asistio" },
+  [normalizeHeader("No Asistio")]: { type: "enrollment", field: "no_asistio" },
+  [normalizeHeader("TL enrolado")]: { type: "enrollment", field: "tl_enrolado" },
   [normalizeHeader("Nombre")]: { type: "person", field: "first_name" },
   [normalizeHeader("Apellido")]: { type: "person", field: "last_name" },
   [normalizeHeader("Telefono")]: { type: "person", field: "phone" },
@@ -283,8 +286,10 @@ export async function runImport(
         tl_norms_signed: toBool(getCell(row, columnMap.enrollment["tl_norms_signed"])),
         tl_rules_signed: toBool(getCell(row, columnMap.enrollment["tl_rules_signed"])),
         withdrew: toBool(getCell(row, columnMap.enrollment["withdrew"])),
+        no_asistio: toBool(getCell(row, columnMap.enrollment["no_asistio"])),
         admin_notes: toStr(getCell(row, columnMap.enrollment["admin_notes"])) || null,
         angel_name: toStr(getCell(row, columnMap.enrollment["angel_name"])) || null,
+        tl_enrolado: toStr(getCell(row, columnMap.enrollment["tl_enrolado"])) || null,
       };
 
       const feeAmount = columnMap.paymentAmount != null

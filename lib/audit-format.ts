@@ -14,6 +14,8 @@ const AUDIT_FIELD_LABELS: Record<string, string> = {
   tl_norms_signed: "Normas TL",
   tl_rules_signed: "Reglas TL",
   withdrew: "Retiró",
+  no_asistio: "No Asistió",
+  tl_enrolado: "TL enrolado",
   status: "Estado",
   admin_notes: "Observaciones",
   angel_name: "Ángel",

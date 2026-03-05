@@ -39,7 +39,11 @@ export function buildReportPdf(content: ReportContent): void {
   y += lineHeight;
 
   addLine(`Participantes que iniciaron: ${content.participantesIniciaron}`);
+  addLine(`Participantes que no asistieron: ${content.participantesNoAsistieron}`);
+  addLine(`Participantes que se retiraron: ${content.participantesRetiraron}`);
   addLine(`Participantes que culminaron: ${content.participantesCulminaron}`);
+  addLine(`Entrolados Proposito: ${content.entroladosProposito}`);
+  addLine(`Entrolados Conexión: ${content.entroladosConexion}`);
   y += lineHeight;
 
   addLine("Pagos");
@@ -48,6 +52,10 @@ export function buildReportPdf(content: ReportContent): void {
       addLine(`Pagos ${method}: ${count} participantes - ${formatCurrency(sum)}`);
     }
   }
+  if (content.feeAdministrativoCount > 0 || content.feeAdministrativoSum > 0) {
+    addLine(`Fee Administrativo: ${content.feeAdministrativoCount} participantes - ${formatCurrency(content.feeAdministrativoSum)}`);
+  }
+  addLine(`Pagos Backlogs: ${content.pagosBacklogsCount} participantes`);
   addLine(`Total = ${formatCurrency(content.total)}`);
   y += lineHeight;
 

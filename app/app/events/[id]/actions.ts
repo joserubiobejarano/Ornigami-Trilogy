@@ -31,9 +31,10 @@ const BOOLEAN_FIELDS = [
   "tl_rules_signed",
   "finalized",
   "withdrew",
+  "no_asistio",
 ] as const;
 
-const TEXT_FIELDS = ["admin_notes", "angel_name", "city", "status"] as const;
+const TEXT_FIELDS = ["admin_notes", "angel_name", "city", "status", "tl_enrolado"] as const;
 const NUMBER_FIELDS = ["cantidad"] as const;
 
 type AllowedField =
@@ -105,6 +106,8 @@ export async function getEventWithEnrollments(
       cantidad,
       finalized,
       withdrew,
+      no_asistio,
+      tl_enrolado,
       created_at,
       replaced_by_enrollment_id,
       person:people(first_name, last_name, phone, email)
@@ -196,6 +199,8 @@ export async function getEventWithEnrollments(
     cantidad: number | null;
     finalized: boolean;
     withdrew: boolean;
+    no_asistio: boolean;
+    tl_enrolado: string | null;
     created_at?: string;
     replaced_by_enrollment_id: string | null;
     person:
@@ -231,6 +236,8 @@ export async function getEventWithEnrollments(
       tl_rules_signed: r.tl_rules_signed,
       finalized: r.finalized ?? false,
       withdrew: r.withdrew ?? false,
+      no_asistio: r.no_asistio ?? false,
+      tl_enrolado: r.tl_enrolado ?? null,
       cantidad:
         r.cantidad != null && String(r.cantidad).trim() !== "" && !Number.isNaN(Number(r.cantidad))
           ? Number(r.cantidad)
@@ -326,21 +333,38 @@ export async function addExistingParticipantToEvent(
 ): Promise<AddParticipantResult> {
   const supabase = await createClient();
 
-  const [{ data: person, error: personError }, { data: eventRow, error: eventError }] =
-    await Promise.all([
-      supabase.from("people").select("id, angel_name, city").eq("id", personId).single(),
-      supabase.from("events").select("city").eq("id", eventId).single(),
-    ]);
+  // Fetch person with only required fields so we don't fail if optional columns (e.g. city) are missing or restricted
+  const { data: person, error: personError } = await supabase
+    .from("people")
+    .select("id, angel_name")
+    .eq("id", personId)
+    .single();
 
-  if (personError || !person?.id) {
+  if (personError) {
+    // PGRST116 = no rows returned; treat as true "person not found"
+    if (personError.code === "PGRST116" || personError.message?.includes("0 rows")) {
+      return { success: false, error: "Persona no encontrada." };
+    }
+    return { success: false, error: "No se pudo verificar al participante. Inténtalo de nuevo." };
+  }
+  if (!person?.id) {
     return { success: false, error: "Persona no encontrada." };
   }
 
-  const eventCity =
-    !eventError && eventRow && typeof (eventRow as { city?: string | null }).city === "string"
-      ? ((eventRow as { city: string }).city?.trim() || null)
-      : null;
-  const personCity = (person as { city?: string | null }).city ?? null;
+  // Optional: event city for enrollment/backfill; never block enrollment on this
+  let eventCity: string | null = null;
+  try {
+    const { data: eventRow, error: eventError } = await supabase
+      .from("events")
+      .select("city")
+      .eq("id", eventId)
+      .single();
+    if (!eventError && eventRow && typeof (eventRow as { city?: string | null }).city === "string") {
+      eventCity = ((eventRow as { city: string }).city?.trim() || null);
+    }
+  } catch {
+    // ignore; enrollment continues without city
+  }
 
   const { data: existingEnroll } = await supabase
     .from("enrollments")
@@ -353,21 +377,18 @@ export async function addExistingParticipantToEvent(
     return { success: false, error: "Esta persona ya está inscrita en este evento." };
   }
 
+  // Base insert: only columns that exist on enrollments in all environments (no city to avoid missing-column errors)
   const enrollmentInsert: {
     event_id: string;
     person_id: string;
     status: string;
     angel_name: string | null;
-    city?: string | null;
   } = {
     event_id: eventId,
     person_id: personId,
     status: "pending_contract",
     angel_name: (person.angel_name as string | null) ?? null,
   };
-  if (eventCity != null) {
-    enrollmentInsert.city = eventCity;
-  }
 
   const { data: enrollmentInserted, error: enrollError } = await supabase
     .from("enrollments")
@@ -388,8 +409,21 @@ export async function addExistingParticipantToEvent(
 
   await removeBGKFromPriorEnrollments(supabase, personId, enrollmentInserted.id);
 
-  if (eventCity != null && (!personCity || !String(personCity).trim())) {
-    await supabase.from("people").update({ city: eventCity }).eq("id", personId);
+  // Optional backfill: set people.city from event if supported; never block on this
+  if (eventCity != null) {
+    try {
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("city")
+        .eq("id", personId)
+        .single();
+      const personCity = (personRow as { city?: string | null } | null)?.city ?? null;
+      if (!personCity || !String(personCity).trim()) {
+        await supabase.from("people").update({ city: eventCity }).eq("id", personId);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   const {

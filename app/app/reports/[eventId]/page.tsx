@@ -63,7 +63,19 @@ export default async function ReportPage({
           <span className="font-medium">Participantes que iniciaron:</span> {content.participantesIniciaron}
         </p>
         <p>
+          <span className="font-medium">Participantes que no asistieron:</span> {content.participantesNoAsistieron}
+        </p>
+        <p>
+          <span className="font-medium">Participantes que se retiraron:</span> {content.participantesRetiraron}
+        </p>
+        <p>
           <span className="font-medium">Participantes que culminaron:</span> {content.participantesCulminaron}
+        </p>
+        <p>
+          <span className="font-medium">Entrolados Proposito:</span> {content.entroladosProposito}
+        </p>
+        <p>
+          <span className="font-medium">Entrolados Conexión:</span> {content.entroladosConexion}
         </p>
 
         <div>
@@ -76,6 +88,14 @@ export default async function ReportPage({
                 </li>
               ) : null
             )}
+            {content.feeAdministrativoCount > 0 || content.feeAdministrativoSum > 0 ? (
+              <li>
+                Fee Administrativo: {content.feeAdministrativoCount} participantes - {formatCurrency(content.feeAdministrativoSum)}
+              </li>
+            ) : null}
+            <li>
+              Pagos Backlogs: {content.pagosBacklogsCount} participantes
+            </li>
           </ul>
           <p className="mt-2 font-medium">
             Total = {formatCurrency(content.total)}

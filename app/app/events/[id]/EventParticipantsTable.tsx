@@ -32,7 +32,8 @@ type BooleanField =
   | "tl_norms_signed"
   | "tl_rules_signed"
   | "finalized"
-  | "withdrew";
+  | "withdrew"
+  | "no_asistio";
 
 const METHOD_DB_TO_UI: Record<string, string> = {
   square: "Square",
@@ -46,10 +47,11 @@ const PAYMENT_METHOD_OPTIONS = ["Square", "Afterpay", "Zelle", "Cash", "TDC"];
 
 const ESTADO_OPTIONS = ["BGK"] as const;
 const CIUDAD_OPTIONS = ["Miami", "Atlanta"] as const;
+const TL_ENROLADO_OPTIONS = ["Proposito", "Conexión"] as const;
 
 const HEADER_CELL_STICKY = "sticky top-0 z-10 bg-muted";
 
-type OptimisticField = BooleanField | "status";
+type OptimisticField = BooleanField | "status" | "tl_enrolado";
 type OptimisticOverrides = Record<string, Partial<Pick<EnrollmentRow, OptimisticField>>>;
 
 function mergeOptimisticRow(
@@ -124,13 +126,19 @@ export function EventParticipantsTable({
   const handleBlur = useCallback(
     async (
       enrollmentId: string,
-      field: "admin_notes" | "angel_name" | "city" | "status",
+      field: "admin_notes" | "angel_name" | "city" | "status" | "tl_enrolado",
       value: string
     ) => {
       if (field === "status") {
         setOptimisticOverrides((prev) => ({
           ...prev,
           [enrollmentId]: { ...prev[enrollmentId], status: value },
+        }));
+      }
+      if (field === "tl_enrolado") {
+        setOptimisticOverrides((prev) => ({
+          ...prev,
+          [enrollmentId]: { ...prev[enrollmentId], tl_enrolado: value || null },
         }));
       }
       const result = await updateEnrollmentField(enrollmentId, field, value);
@@ -144,6 +152,20 @@ export function EventParticipantsTable({
             if (cur && "status" in cur) {
               const rest = { ...cur };
               delete rest.status;
+              if (Object.keys(rest).length === 0) delete next[enrollmentId];
+              else next[enrollmentId] = rest;
+            }
+            return next;
+          });
+          alert(result.error);
+        }
+        if (field === "tl_enrolado") {
+          setOptimisticOverrides((prev) => {
+            const next = { ...prev };
+            const cur = next[enrollmentId];
+            if (cur && "tl_enrolado" in cur) {
+              const rest = { ...cur };
+              delete rest.tl_enrolado;
               if (Object.keys(rest).length === 0) delete next[enrollmentId];
               else next[enrollmentId] = rest;
             }
@@ -258,6 +280,9 @@ export function EventParticipantsTable({
                 Ciudad
               </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
+                TL enrolado
+              </th>
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Envió Detalles
               </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
@@ -289,6 +314,9 @@ export function EventParticipantsTable({
                 Asistió
               </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
+                No Asistió
+              </th>
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Retiró
               </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[80px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
@@ -314,7 +342,7 @@ export function EventParticipantsTable({
             {              enrollments.length === 0 ? (
               <tr>
                 <td
-                  colSpan={event.program_type === "TL" ? 26 : 24}
+                  colSpan={event.program_type === "TL" ? 28 : 26}
                   className="px-2 py-4 text-center text-muted-foreground lg:px-4 lg:py-8"
                 >
                   Ningún participante coincide con esta vista.
@@ -373,7 +401,7 @@ function EventParticipantRow({
   ) => void;
   onBlurField: (
     id: string,
-    field: "admin_notes" | "angel_name" | "city" | "status",
+    field: "admin_notes" | "angel_name" | "city" | "status" | "tl_enrolado",
     value: string
   ) => void;
   onBlurPersonField: (
@@ -488,6 +516,12 @@ function EventParticipantRow({
         />
       </td>
       <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
+        <TlEnroladoSelectCell
+          value={row.tl_enrolado}
+          onChange={(v) => onBlurField(row.id, "tl_enrolado", v)}
+        />
+      </td>
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
           value={row.details_sent}
           onChange={(v) => onBooleanChange(row.id, "details_sent", v)}
@@ -543,6 +577,12 @@ function EventParticipantRow({
         <BooleanCheckboxCell
           value={row.attended}
           onChange={(v) => onBooleanChange(row.id, "attended", v)}
+        />
+      </td>
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
+        <BooleanCheckboxCell
+          value={row.no_asistio}
+          onChange={(v) => onBooleanChange(row.id, "no_asistio", v)}
         />
       </td>
       <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
@@ -752,6 +792,34 @@ function CiudadSelectCell({
       {CIUDAD_OPTIONS.map((c) => (
         <option key={c} value={c}>
           {c}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function TlEnroladoSelectCell({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (value: string) => void;
+}) {
+  const selectValue =
+    value && TL_ENROLADO_OPTIONS.includes(value as (typeof TL_ENROLADO_OPTIONS)[number])
+      ? value
+      : "";
+
+  return (
+    <select
+      className="h-7 min-w-[80px] rounded border border-input bg-background px-2 py-1 text-center text-sm lg:h-8 lg:min-w-[90px]"
+      value={selectValue}
+      onChange={(e) => onChange(e.target.value || "")}
+    >
+      <option value="">—</option>
+      {TL_ENROLADO_OPTIONS.map((opt) => (
+        <option key={opt} value={opt}>
+          {opt}
         </option>
       ))}
     </select>
