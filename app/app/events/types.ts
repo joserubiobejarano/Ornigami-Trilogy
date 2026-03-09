@@ -48,6 +48,7 @@ export type EnrollmentRow = {
     last_name: string | null;
     phone: string | null;
     email: string;
+    created_at?: string | null;
   };
   /** @deprecated Use payments_by_method and payment_fee for spreadsheet UI */
   last_payment: { id: string; method: string | null; fee_amount: number | null } | null;

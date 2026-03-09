@@ -25,6 +25,7 @@ export function exportBGKCSV(
     "Ciudad",
     "Entrenamiento",
     "Observaciones",
+    "Fecha Inscripción",
     "Días restantes",
   ];
   const dataRows = rows.map((r) => [
@@ -34,6 +35,9 @@ export function exportBGKCSV(
     r.city ?? "",
     r.entrenamientoLabel ?? "",
     r.admin_notes ?? "",
+    r.createdAt
+      ? new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" })
+      : "",
     r.daysRemaining === null ? "" : String(r.daysRemaining),
   ]);
   const csvContent = [
@@ -72,6 +76,7 @@ export function buildBGKTablePdf(rows: BGKRow[]): void {
     { key: "ciudad", w: 22 },
     { key: "entrenamiento", w: 35 },
     { key: "observaciones", w: 50 },
+    { key: "fecha_inscripcion", w: 22 },
     { key: "dias_restantes", w: 22 },
   ];
   let x = margin;
@@ -80,7 +85,9 @@ export function buildBGKTablePdf(rows: BGKRow[]): void {
     const label =
       c.key === "dias_restantes"
         ? "Días restantes"
-        : c.key.charAt(0).toUpperCase() + c.key.slice(1).replace("_", " ");
+        : c.key === "fecha_inscripcion"
+          ? "Fecha Inscripción"
+          : c.key.charAt(0).toUpperCase() + c.key.slice(1).replace("_", " ");
     doc.text(label, x, y);
     x += c.w;
   });
@@ -92,6 +99,9 @@ export function buildBGKTablePdf(rows: BGKRow[]): void {
       y = margin + lineHeight;
     }
     x = margin;
+    const fechaInscripcion = r.createdAt
+      ? new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" })
+      : "—";
     const row = [
       displayName(r).slice(0, 24),
       (r.email ?? "").slice(0, 32),
@@ -99,6 +109,7 @@ export function buildBGKTablePdf(rows: BGKRow[]): void {
       (r.city ?? "").slice(0, 14),
       (r.entrenamientoLabel ?? "").slice(0, 24),
       (r.admin_notes ?? "").slice(0, 38),
+      fechaInscripcion,
       r.daysRemaining === null ? "—" : String(r.daysRemaining),
     ];
     cols.forEach((c, j) => {

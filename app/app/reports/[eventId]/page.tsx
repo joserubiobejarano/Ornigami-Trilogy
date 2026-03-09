@@ -35,51 +35,53 @@ export default async function ReportPage({
 
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">
-          Informe Cierre de {content.title}
+          Informe Cierre de {content.title}{data.city ? ` - ${data.city}` : ""}
         </h1>
       </header>
 
-      <div className="rounded-md border bg-card p-6 text-sm space-y-4">
-        <p>
-          <span className="font-medium">Finalizó:</span> {content.endDate}
-        </p>
-
-        <div className="grid gap-1">
-          <p>
-            <span className="font-medium">Coordinador:</span> {content.coordinator}
-          </p>
-          <p>
-            <span className="font-medium">Entrenadores:</span> {content.entrenadores}
-          </p>
-          <p>
-            <span className="font-medium">Mentores:</span> {content.mentores}
-          </p>
-          <p>
-            <span className="font-medium">Capitán mentores:</span> {content.capitanMentores}
-          </p>
+      <div className="rounded-md border-2 bg-card p-4 text-base space-y-8">
+        <div>
+          <p className="font-medium mb-1 text-[1.0625rem]">Fechas</p>
+          <ul className="list-none space-y-1">
+            <li>Empezó: {content.startDate}</li>
+            <li>Finalizó: {content.endDate}</li>
+          </ul>
         </div>
 
-        <p>
-          <span className="font-medium">Participantes que iniciaron:</span> {content.participantesIniciaron}
-        </p>
-        <p>
-          <span className="font-medium">Participantes que no asistieron:</span> {content.participantesNoAsistieron}
-        </p>
-        <p>
-          <span className="font-medium">Participantes que se retiraron:</span> {content.participantesRetiraron}
-        </p>
-        <p>
-          <span className="font-medium">Participantes que culminaron:</span> {content.participantesCulminaron}
-        </p>
-        <p>
-          <span className="font-medium">Entrolados Proposito:</span> {content.entroladosProposito}
-        </p>
-        <p>
-          <span className="font-medium">Entrolados Conexión:</span> {content.entroladosConexion}
-        </p>
+        <div>
+          <p className="font-medium mb-1 text-[1.0625rem]">Responsables</p>
+          <ul className="list-none space-y-1">
+            <li>Coordinador: {content.coordinator}</li>
+            <li>Entrenadores: {content.entrenadores}</li>
+            <li>Mentores: {content.mentores}</li>
+            <li>Capitán mentores: {content.capitanMentores}</li>
+          </ul>
+        </div>
 
         <div>
-          <p className="font-medium mb-2">Pagos</p>
+          <p className="font-medium mb-1 text-[1.0625rem]">Participantes</p>
+          <ul className="list-none space-y-1">
+            <li>Participantes que iniciaron: {content.participantesIniciaron}</li>
+            <li>Participantes que no asistieron: {content.participantesNoAsistieron}</li>
+            <li>Participantes que se retiraron: {content.participantesRetiraron}</li>
+            <li>Participantes que culminaron: {content.participantesCulminaron}</li>
+            <li>Entrolados Proposito: {content.entroladosProposito}</li>
+            {content.propositoByMethod.map(({ method, sum }) => (
+              <li key={`proposito-${method}`} className="pl-4">
+                Proposito {method}: {formatCurrency(sum)}
+              </li>
+            ))}
+            <li>Entrolados Conexión: {content.entroladosConexion}</li>
+            {content.conexionByMethod.map(({ method, sum }) => (
+              <li key={`conexion-${method}`} className="pl-4">
+                Conexión {method}: {formatCurrency(sum)}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-medium mb-1 text-[1.0625rem]">Pagos</p>
           <ul className="list-none space-y-1">
             {content.paymentLines.map(({ method, count, sum }) =>
               count > 0 || sum > 0 ? (
@@ -93,11 +95,9 @@ export default async function ReportPage({
                 Fee Administrativo: {content.feeAdministrativoCount} participantes - {formatCurrency(content.feeAdministrativoSum)}
               </li>
             ) : null}
-            <li>
-              Pagos Backlogs: {content.pagosBacklogsCount} participantes
-            </li>
+            <li>Pagos de Asistieron: {formatCurrency(content.pagosAsistieronSum)}</li>
           </ul>
-          <p className="mt-2 font-medium">
+          <p className="mt-2">
             Total = {formatCurrency(content.total)}
           </p>
         </div>

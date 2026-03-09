@@ -6,11 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { PersonRow } from "./types";
 import type { PeopleCounts, EventFilterOptions } from "./actions";
 import { deletePerson } from "./actions";
-import { CIUDAD_OPTIONS, INSCRIPTION_VALID_DAYS } from "./constants";
+import { exportPeopleCSV, buildPeopleTablePdf } from "./export-table";
 
 const PAYMENT_UI: Record<string, string> = {
   square: "Square",
@@ -46,23 +51,12 @@ function displayName(p: PersonRow): string {
   return parts.join(" ") || p.email || "—";
 }
 
-/** Days remaining from INSCRIPTION_VALID_DAYS since created_at (UTC). Returns null if no created_at. */
-function daysRemaining(p: PersonRow): number | null {
-  const created = p.created_at;
-  if (!created) return null;
-  const createdAt = new Date(created).getTime();
-  const now = Date.now();
-  const elapsedDays = Math.floor((now - createdAt) / (24 * 60 * 60 * 1000));
-  return Math.max(0, INSCRIPTION_VALID_DAYS - elapsedDays);
-}
-
 function buildSearchParams(
   current: URLSearchParams,
   updates: {
     city?: string;
     payment?: string;
     entrenamiento?: string;
-    numero?: string;
   }
 ): string {
   const params = new URLSearchParams(current.toString());
@@ -78,10 +72,6 @@ function buildSearchParams(
     if (updates.entrenamiento === "all" || !updates.entrenamiento.trim()) params.delete("entrenamiento");
     else params.set("entrenamiento", updates.entrenamiento);
   }
-  if (updates.numero !== undefined) {
-    if (updates.numero === "all" || !updates.numero.trim()) params.delete("numero");
-    else params.set("numero", updates.numero);
-  }
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -92,16 +82,17 @@ export function PeopleList({
   filterCity,
   filterPayment,
   filterEntrenamiento,
-  filterNumero,
   eventFilterOptions,
+  cityOptions,
 }: {
   people: PersonRow[];
   counts: PeopleCounts;
   filterCity: string;
   filterPayment: string;
   filterEntrenamiento: string;
-  filterNumero: string;
   eventFilterOptions: EventFilterOptions;
+  /** All cities from catalog (Administración > Ciudades). */
+  cityOptions: string[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
@@ -132,32 +123,30 @@ export function PeopleList({
     city?: string;
     payment?: string;
     entrenamiento?: string;
-    numero?: string;
   }) => {
     const next = buildSearchParams(searchParams, {
       city: updates.city ?? filterCity,
       payment: updates.payment ?? filterPayment,
       entrenamiento: updates.entrenamiento ?? filterEntrenamiento,
-      numero: updates.numero ?? filterNumero,
     });
     router.push(`/app/people${next}`);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="max-w-md flex-1 min-w-[200px]">
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-wrap items-end gap-3 sm:gap-4 max-w-full">
+        <div className="w-full sm:max-w-xs min-w-0 flex-shrink-0">
           <Input
             type="search"
             placeholder="Buscar por nombre, correo o teléfono…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10"
+            className="h-10 w-full min-w-0"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label htmlFor="filter-city" className="text-sm font-medium text-muted-foreground">
+        <div className="flex flex-wrap items-end gap-3 min-w-0">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center gap-2">
+            <label htmlFor="filter-city" className="text-sm text-foreground shrink-0">
               Ciudad
             </label>
             <div className="relative inline-block">
@@ -171,11 +160,12 @@ export function PeopleList({
                 )}
               >
                 <option value="all">Todos</option>
-                {[...CIUDAD_OPTIONS, ...Object.keys(counts.byCity).filter((c) => !CIUDAD_OPTIONS.includes(c as typeof CIUDAD_OPTIONS[number]))].map((c) => (
+                {cityOptions.map((c) => (
                   <option key={c} value={c}>
                     {c} ({counts.byCity[c] ?? 0})
                   </option>
                 ))}
+                <option value="Sin ciudad">Sin ciudad ({counts.byCity["Sin ciudad"] ?? 0})</option>
               </select>
               <ChevronDown
                 className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 shrink-0 opacity-70"
@@ -183,8 +173,8 @@ export function PeopleList({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="filter-payment" className="text-sm font-medium text-muted-foreground">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center gap-2">
+            <label htmlFor="filter-payment" className="text-sm text-foreground shrink-0">
               Forma de pago
             </label>
             <div className="relative inline-block">
@@ -216,8 +206,8 @@ export function PeopleList({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="filter-entrenamiento" className="text-sm font-medium text-muted-foreground">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center gap-2">
+            <label htmlFor="filter-entrenamiento" className="text-sm text-foreground shrink-0">
               Entrenamiento
             </label>
             <div className="relative inline-block">
@@ -231,7 +221,7 @@ export function PeopleList({
                 )}
               >
                 <option value="all">Todos</option>
-                {eventFilterOptions.programTypes.map(({ value, label }) => (
+                {eventFilterOptions.events.map(({ value, label }) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -243,37 +233,40 @@ export function PeopleList({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="filter-numero" className="text-sm font-medium text-muted-foreground">
-              Número
-            </label>
-            <div className="relative inline-block">
-              <select
-                id="filter-numero"
-                value={filterNumero}
-                onChange={(e) => setFilters({ numero: e.target.value })}
-                className={cn(
-                  "border-input h-9 w-full min-w-[6rem] rounded-none border bg-transparent pl-3 pr-8 py-1 text-sm shadow-xs appearance-none",
-                  "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-white text-black border-input hover:bg-gray-100 hover:text-black shrink-0"
               >
-                <option value="all">Todos</option>
-                {eventFilterOptions.codes.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 shrink-0 opacity-70"
-                aria-hidden
-              />
-            </div>
-          </div>
+                Descargar ▾
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-40 p-2">
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => exportPeopleCSV(filtered, "participantes")}
+                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted/50"
+                >
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => buildPeopleTablePdf(filtered, "participantes")}
+                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted/50"
+                >
+                  PDF
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
+      <div className="min-w-0 overflow-x-auto rounded-md border">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-black text-white">
@@ -281,7 +274,6 @@ export function PeopleList({
               <th className="px-4 py-3 text-left font-medium">Correo</th>
               <th className="px-4 py-3 text-left font-medium">Teléfono</th>
               <th className="px-4 py-3 text-left font-medium">Ciudad</th>
-              <th className="px-4 py-3 text-center font-medium">Días restantes</th>
               <th className="px-4 py-3 text-right font-medium">Acciones</th>
             </tr>
           </thead>
@@ -289,7 +281,7 @@ export function PeopleList({
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   {people.length === 0
@@ -298,15 +290,12 @@ export function PeopleList({
                 </td>
               </tr>
             ) : (
-              filtered.map((person) => {
-                const daysLeft = daysRemaining(person);
-                return (
+              filtered.map((person) => (
                 <tr key={person.id} className="border-b last:border-0">
                   <td className="px-4 py-3">{displayName(person)}</td>
                   <td className="px-4 py-3">{person.email}</td>
                   <td className="px-4 py-3">{person.phone ?? "—"}</td>
                   <td className="px-4 py-3">{person.city ?? "—"}</td>
-                  <td className="px-4 py-3 text-center">{daysLeft === null ? "—" : String(daysLeft)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" asChild>
@@ -324,8 +313,7 @@ export function PeopleList({
                     </div>
                   </td>
                 </tr>
-                );
-              })
+              ))
             )}
           </tbody>
         </table>

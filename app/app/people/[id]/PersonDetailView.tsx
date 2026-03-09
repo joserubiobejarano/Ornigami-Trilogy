@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,20 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { updateEnrollmentField } from "@/app/app/events/[id]/actions";
 import type {
   EnrollmentWithEventAndPayments,
   PersonWithEnrollments,
 } from "@/app/app/people/types";
-import type { AuditLogEntry } from "@/lib/audit-actions";
-import { AuditTimeline } from "@/components/audit-timeline";
+import { programTypeToDisplay } from "@/lib/program-display";
+import { formatCurrency } from "@/app/app/reports/report-builder";
 import { moveToNextProgram } from "./actions";
-import { cn } from "@/lib/utils";
-
-const PROGRAM_ORDER = ["PT", "LT", "TL"] as const;
+import { PROGRAM_ORDER } from "../constants";
 
 function formatDateRange(start: string, end: string) {
   try {
@@ -49,15 +44,23 @@ function formatPaymentDate(iso: string) {
   }
 }
 
-type BooleanField =
-  | "attended"
-  | "details_sent"
-  | "confirmed"
-  | "contract_signed"
-  | "cca_signed"
-  | "health_doc_signed"
-  | "tl_norms_signed"
-  | "tl_rules_signed";
+function formatEnrollmentDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      dateStyle: "short",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function eventFullTitle(event: EnrollmentWithEventAndPayments["event"]): string {
+  if (!event) return "—";
+  const program = programTypeToDisplay(event.program_type);
+  const parts = [program, event.code, event.city].filter(Boolean);
+  return parts.join(" ") || "—";
+}
 
 function nextProgramType(current: string): string | null {
   const upper = current?.toUpperCase();
@@ -66,84 +69,14 @@ function nextProgramType(current: string): string | null {
   return null;
 }
 
-function EditableCell({
-  value,
-  onBlur,
-  placeholder,
-}: {
-  value: string;
-  onBlur: (value: string) => void;
-  placeholder?: string;
-}) {
-  const [local, setLocal] = useState(value);
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setLocal(value);
-  }, [value, editing]);
-
-  const handleBlur = () => {
-    setEditing(false);
-    if (local !== value) onBlur(local);
-  };
-
-  if (editing) {
-    return (
-      <Input
-        className="h-8 text-sm"
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={(e) => e.key === "Enter" && handleBlur()}
-        autoFocus
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "block w-full rounded border border-transparent px-2 py-1.5 text-left text-sm hover:border-input hover:bg-muted/50",
-        !value && "text-muted-foreground"
-      )}
-      onClick={() => setEditing(true)}
-    >
-      {value || (placeholder ?? "")}
-    </button>
-  );
-}
-
 export function PersonDetailView({
   data,
-  auditEntries = [],
 }: {
   data: PersonWithEnrollments;
-  auditEntries?: AuditLogEntry[];
 }) {
   const router = useRouter();
   const [moveError, setMoveError] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
-
-  const handleToggle = useCallback(
-    async (enrollmentId: string, field: BooleanField, checked: boolean) => {
-      const result = await updateEnrollmentField(enrollmentId, field, checked);
-      if (result.success) router.refresh();
-    },
-    [router]
-  );
-
-  const handleBlurField = useCallback(
-    async (
-      enrollmentId: string,
-      field: "admin_notes" | "angel_name",
-      value: string
-    ) => {
-      const result = await updateEnrollmentField(enrollmentId, field, value);
-      if (result.success) router.refresh();
-    },
-    [router]
-  );
 
   const handleMoveToNext = useCallback(
     async (enrollmentId: string) => {
@@ -168,7 +101,7 @@ export function PersonDetailView({
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-1 sm:px-0">
       <div>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/app/people">← Volver</Link>
@@ -206,22 +139,17 @@ export function PersonDetailView({
       )}
 
       {enrollmentsByProgram.map(
-        ({ programType, enrollments }) =>
+        ({ enrollments }) =>
           enrollments.length > 0 && (
-            <div key={programType} className="space-y-3">
-              <h3 className="text-lg font-semibold">{programType}</h3>
-              <div className="space-y-4">
-                {enrollments.map((enrollment) => (
-                  <EnrollmentCard
-                    key={enrollment.id}
-                    enrollment={enrollment}
-                    onToggle={handleToggle}
-                    onBlurField={handleBlurField}
-                    onMoveToNext={handleMoveToNext}
-                    isMoving={movingId === enrollment.id}
-                  />
-                ))}
-              </div>
+            <div key={enrollments[0]?.event?.program_type ?? "other"} className="space-y-4">
+              {enrollments.map((enrollment) => (
+                <EnrollmentCard
+                  key={enrollment.id}
+                  enrollment={enrollment}
+                  onMoveToNext={handleMoveToNext}
+                  isMoving={movingId === enrollment.id}
+                />
+              ))}
             </div>
           )
       )}
@@ -229,48 +157,41 @@ export function PersonDetailView({
       {data.enrollments.length === 0 && (
         <p className="text-muted-foreground">Aún no hay inscripciones.</p>
       )}
-
-      {(auditEntries.length > 0 || data.enrollments.length > 0) && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold">Historial</h3>
-          <AuditTimeline entries={auditEntries} emptyMessage="Sin cambios recientes." />
-        </div>
-      )}
     </div>
   );
 }
 
 function EnrollmentCard({
   enrollment,
-  onToggle,
-  onBlurField,
   onMoveToNext,
   isMoving,
 }: {
   enrollment: EnrollmentWithEventAndPayments;
-  onToggle: (id: string, field: BooleanField, checked: boolean) => void;
-  onBlurField: (
-    id: string,
-    field: "admin_notes" | "angel_name",
-    value: string
-  ) => void;
   onMoveToNext: (id: string) => void;
   isMoving: boolean;
 }) {
   const event = enrollment.event;
-  const programType = event?.program_type?.toUpperCase() ?? "";
-  const showCCA = programType === "LT" || programType === "TL";
-  const showDocSalud = programType === "PT";
-  const showNormasReglasTL = programType === "TL";
   const isActive = event?.active === true;
   const nextType = nextProgramType(event?.program_type ?? "");
+  const paymentsText =
+    enrollment.payments.length === 0
+      ? "—"
+      : enrollment.payments
+          .map((p) => {
+            const method = p.method ?? "—";
+            const date = formatPaymentDate(p.created_at);
+            const amount =
+              p.fee_amount != null ? formatCurrency(p.fee_amount) : "";
+            return amount ? `${method} (${date}) ${amount}` : `${method} (${date})`;
+          })
+          .join(" · ");
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <CardTitle className="text-base">
-            {event?.code ?? "—"} · {event?.city ?? "—"}
+            {eventFullTitle(event)}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {event?.start_date && event?.end_date
@@ -287,136 +208,50 @@ function EnrollmentCard({
       <CardContent className="space-y-4">
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-center gap-2">
-            <Switch
-              id={`${enrollment.id}-attended`}
-              checked={enrollment.attended}
-              onCheckedChange={(c) =>
-                onToggle(enrollment.id, "attended", c)
-              }
-            />
-            <Label htmlFor={`${enrollment.id}-attended`}>Asistió</Label>
+            <Label className="font-normal text-foreground">Confirmó</Label>
+            <span className="text-foreground">
+              {enrollment.confirmed ? "Sí" : "No"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <Switch
-              id={`${enrollment.id}-details_sent`}
-              checked={enrollment.details_sent}
-              onCheckedChange={(c) =>
-                onToggle(enrollment.id, "details_sent", c)
-              }
-            />
-            <Label htmlFor={`${enrollment.id}-details_sent`}>
-              Envío detalles
-            </Label>
+            <Label className="font-normal text-foreground">Asistió</Label>
+            <span className="text-foreground">
+              {enrollment.attended ? "Sí" : "No"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <Switch
-              id={`${enrollment.id}-confirmed`}
-              checked={enrollment.confirmed}
-              onCheckedChange={(c) =>
-                onToggle(enrollment.id, "confirmed", c)
-              }
-            />
-            <Label htmlFor={`${enrollment.id}-confirmed`}>Confirmó</Label>
+            <Label className="font-normal text-foreground">Retiró</Label>
+            <span className="text-foreground">
+              {enrollment.withdrew ? "Sí" : "No"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <Switch
-              id={`${enrollment.id}-contract_signed`}
-              checked={enrollment.contract_signed}
-              onCheckedChange={(c) =>
-                onToggle(enrollment.id, "contract_signed", c)
-              }
-            />
-            <Label htmlFor={`${enrollment.id}-contract_signed`}>
-              Contrato
-            </Label>
+            <Label className="font-normal text-foreground">Finalizó</Label>
+            <span className="text-foreground">
+              {enrollment.finalized ? "Sí" : "No"}
+            </span>
           </div>
-          {showCCA && (
-            <div className="flex items-center gap-2">
-              <Switch
-                id={`${enrollment.id}-cca_signed`}
-                checked={enrollment.cca_signed}
-                onCheckedChange={(c) =>
-                  onToggle(enrollment.id, "cca_signed", c)
-                }
-              />
-              <Label htmlFor={`${enrollment.id}-cca_signed`}>CCA</Label>
-            </div>
-          )}
-          {showDocSalud && (
-            <div className="flex items-center gap-2">
-              <Switch
-                id={`${enrollment.id}-health_doc_signed`}
-                checked={enrollment.health_doc_signed ?? false}
-                onCheckedChange={(c) =>
-                  onToggle(enrollment.id, "health_doc_signed", c)
-                }
-              />
-              <Label htmlFor={`${enrollment.id}-health_doc_signed`}>
-                Doc. Salud
-              </Label>
-            </div>
-          )}
-          {showNormasReglasTL && (
-            <>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id={`${enrollment.id}-tl_norms_signed`}
-                  checked={enrollment.tl_norms_signed ?? false}
-                  onCheckedChange={(c) =>
-                    onToggle(enrollment.id, "tl_norms_signed", c)
-                  }
-                />
-                <Label htmlFor={`${enrollment.id}-tl_norms_signed`}>
-                  Normas TL
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id={`${enrollment.id}-tl_rules_signed`}
-                  checked={enrollment.tl_rules_signed ?? false}
-                  onCheckedChange={(c) =>
-                    onToggle(enrollment.id, "tl_rules_signed", c)
-                  }
-                />
-                <Label htmlFor={`${enrollment.id}-tl_rules_signed`}>
-                  Reglas TL
-                </Label>
-              </div>
-            </>
-          )}
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-muted-foreground">Observaciones</Label>
-          <EditableCell
-            value={enrollment.admin_notes ?? ""}
-            onBlur={(v) => onBlurField(enrollment.id, "admin_notes", v)}
-            placeholder="Notas"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-muted-foreground">Ángel</Label>
-          <EditableCell
-            value={enrollment.angel_name ?? ""}
-            onBlur={(v) => onBlurField(enrollment.id, "angel_name", v)}
-            placeholder="Ángel"
-          />
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+          <span className="font-normal text-foreground">Observaciones</span>
+          <span className="text-muted-foreground">
+            {enrollment.admin_notes?.trim() ?? "—"}
+          </span>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-muted-foreground">Pagos</Label>
-          {enrollment.payments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">—</p>
-          ) : (
-            <ul className="list-inside list-disc space-y-1 text-sm">
-              {enrollment.payments.map((p) => (
-                <li key={p.id}>
-                  {p.method ?? "—"} {p.fee_amount != null ? String(p.fee_amount) : ""}{" "}
-                  ({formatPaymentDate(p.created_at)})
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+          <span className="font-normal text-foreground">
+            Fecha de inscripción
+          </span>
+          <span className="text-muted-foreground">
+            {formatEnrollmentDate(enrollment.created_at)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+          <span className="font-normal text-foreground">Pagos</span>
+          <span className="text-muted-foreground">{paymentsText}</span>
         </div>
 
         {isActive && nextType && (

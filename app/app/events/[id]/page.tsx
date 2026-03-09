@@ -1,3 +1,4 @@
+import { listCities } from "@/app/app/administration/actions";
 import { getEventWithEnrollments } from "./actions";
 import { EventCrmView } from "./EventCrmView";
 
@@ -8,7 +9,12 @@ export default async function EventDetailPage({
 }) {
   const { id } = await params;
 
-  const data = await getEventWithEnrollments(id, null);
+  const [data, cities] = await Promise.all([
+    getEventWithEnrollments(id, null),
+    listCities(),
+  ]);
 
-  return <EventCrmView data={data} />;
+  const cityOptions = cities.map((c) => c.name);
+
+  return <EventCrmView data={data} cityOptions={cityOptions} />;
 }

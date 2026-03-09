@@ -163,6 +163,18 @@ export async function updateEventStaff(
   return { success: true };
 }
 
+const DUPLICATE_COPY_MODES = ["finalized", "backlog_or_no_asistio"] as const;
+type DuplicateCopyMode = (typeof DUPLICATE_COPY_MODES)[number];
+
+function isDuplicateCopyMode(value: unknown): value is DuplicateCopyMode {
+  return typeof value === "string" && DUPLICATE_COPY_MODES.includes(value as DuplicateCopyMode);
+}
+
+function enrollmentHasBgk(status: string | null | undefined): boolean {
+  const tags = (status ?? "").split(",").map((s) => s.trim().toUpperCase());
+  return tags.includes("BGK");
+}
+
 export async function duplicateEvent(
   sourceEventId: string,
   formData: FormData
@@ -171,7 +183,11 @@ export async function duplicateEvent(
   const code = String(formData.get("code") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
   const coordinator = String(formData.get("coordinator") ?? "").trim() || null;
-  const copyParticipants = formData.get("copy_participants") === "on" || formData.get("copy_participants") === "true";
+  const copyModeRaw = formData.get("copy_mode");
+  if (!isDuplicateCopyMode(copyModeRaw)) {
+    return { success: false, error: "Selecciona cómo copiar participantes (finalizados o backlogs y no asistieron)." };
+  }
+  const copyMode: DuplicateCopyMode = copyModeRaw;
 
   if (!code) {
     return { success: false, error: "El número es obligatorio." };
@@ -212,73 +228,99 @@ export async function duplicateEvent(
     return { success: false, error: "No se pudo crear el evento. Inténtalo de nuevo." };
   }
 
-  if (copyParticipants) {
-    const { data: rawSourceEnrollments } = await supabase
+  const { data: rawSourceEnrollments } = await supabase
+    .from("enrollments")
+    .select(
+      "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, contacted, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew, no_asistio"
+    )
+    .eq("event_id", sourceEventId);
+
+  type EnrollmentRow = {
+    person_id: string;
+    status?: string | null;
+    admin_notes?: string | null;
+    angel_name?: string | null;
+    city?: string | null;
+    no_asistio?: boolean;
+    [key: string]: unknown;
+  };
+
+  const excludeTransferred = (e: { status?: string | null }) => e.status !== "transferred_out";
+
+  const sourceEnrollments =
+    copyMode === "finalized"
+      ? (rawSourceEnrollments ?? []).filter(
+          (e: EnrollmentRow) => excludeTransferred(e) && e.finalized === true
+        )
+      : (rawSourceEnrollments ?? []).filter((e: EnrollmentRow) => {
+          if (!excludeTransferred(e)) return false;
+          const hasBgk = enrollmentHasBgk(e.status);
+          return hasBgk || e.no_asistio === true;
+        });
+
+  if (sourceEnrollments.length > 0) {
+    const defaultReset = {
+      attended: false,
+      details_sent: false,
+      confirmed: false,
+      contract_signed: false,
+      cca_signed: false,
+      contacted: false,
+      health_doc_signed: false,
+      tl_norms_signed: false,
+      tl_rules_signed: false,
+      cantidad: null,
+      finalized: false,
+      withdrew: false,
+      tl_enrolado: null,
+    };
+
+    const enrollmentsToInsert =
+      copyMode === "finalized"
+        ? (sourceEnrollments as EnrollmentRow[]).map((e) => ({
+            event_id: newEvent.id,
+            person_id: e.person_id,
+            angel_name: e.angel_name ?? null,
+            city: e.city ?? null,
+            status: "pending_contract",
+            admin_notes: null,
+            no_asistio: false,
+            ...defaultReset,
+          }))
+        : (sourceEnrollments as EnrollmentRow[]).map((e) => {
+            const hasBgk = enrollmentHasBgk(e.status);
+            const status = hasBgk ? (e.status ?? "BGK") : "BGK";
+            return {
+              event_id: newEvent.id,
+              person_id: e.person_id,
+              angel_name: e.angel_name ?? null,
+              city: e.city ?? null,
+              status,
+              admin_notes: e.admin_notes ?? null,
+              no_asistio: false,
+              ...defaultReset,
+            };
+          });
+
+    const { error: enrollError } = await supabase
       .from("enrollments")
-      .select(
-        "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, contacted, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew, no_asistio"
-      )
-      .eq("event_id", sourceEventId);
+      .insert(enrollmentsToInsert);
 
-    const sourceEnrollments =
-      rawSourceEnrollments?.filter(
-        (e: { status?: string; no_asistio?: boolean; finalized?: boolean }) => {
-          if (e.status === "transferred_out") return false;
-          const tags = (e.status ?? "")
-            .split(",")
-            .map((s) => s.trim().toUpperCase());
-          if (tags.includes("BGK")) return false;
-          return e.no_asistio === true || e.finalized === true;
-        }
-      ) ?? [];
+    if (enrollError) {
+      revalidatePath("/app/events");
+      return {
+        success: false,
+        error: "Evento creado pero no se pudieron copiar los participantes.",
+      };
+    }
 
-    if (sourceEnrollments.length > 0) {
-      const enrollmentsToInsert = sourceEnrollments.map(
-        (e: Record<string, unknown>) => ({
-          event_id: newEvent.id,
-          person_id: e.person_id,
-          angel_name: e.angel_name ?? null,
-          city: e.city ?? null,
-          status: "pending_contract",
-          attended: false,
-          details_sent: false,
-          confirmed: false,
-          contract_signed: false,
-          cca_signed: false,
-          contacted: false,
-          admin_notes: null,
-          health_doc_signed: false,
-          tl_norms_signed: false,
-          tl_rules_signed: false,
-          cantidad: null,
-          finalized: false,
-          withdrew: false,
-          no_asistio: e.no_asistio === true,
-          tl_enrolado: null,
-        })
-      );
-
-      const { error: enrollError } = await supabase
-        .from("enrollments")
-        .insert(enrollmentsToInsert);
-
-      if (enrollError) {
-        revalidatePath("/app/events");
-        return {
-          success: false,
-          error: "Evento creado pero no se pudieron copiar los participantes.",
-        };
-      }
-
-      const personIds = [
-        ...new Set(
-          (enrollmentsToInsert as { person_id: string }[]).map((e) => e.person_id)
-        ),
-      ];
-      if (personIds.length > 0 && city) {
-        await supabase.from("people").update({ city }).in("id", personIds);
-      }
-
+    const personIds = [
+      ...new Set(
+        (enrollmentsToInsert as { person_id: string }[]).map((e) => e.person_id)
+      ),
+    ];
+    if (personIds.length > 0 && city) {
+      await supabase.from("people").update({ city }).in("id", personIds);
     }
   }
 

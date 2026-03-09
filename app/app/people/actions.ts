@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { programTypeToDisplay } from "@/lib/program-display";
+import { compareProgramCodes } from "@/lib/program-order";
 import type { PersonRow } from "./types";
 
 export type DeletePersonResult = { success: true } | { success: false; error: string };
@@ -33,40 +34,41 @@ export type PeopleFilters = {
   city?: string;
   paymentMethod?: string;
   backlog?: boolean;
-  programType?: string;
-  eventCode?: string;
+  eventId?: string;
 };
 
+export type EventFilterOption = { value: string; label: string };
+
 export type EventFilterOptions = {
-  programTypes: { value: string; label: string }[];
-  codes: string[];
+  events: EventFilterOption[];
 };
 
 export async function getEventFilterOptions(): Promise<EventFilterOptions> {
   const supabase = await createClient();
   const { data: events = [] } = await supabase
     .from("events")
-    .select("program_type, code")
+    .select("id, program_type, code, city")
     .is("scheduled_deletion_at", null);
 
-  type EventRow = { program_type: string; code: string };
+  type EventRow = { id: string; program_type: string; code: string; city: string | null };
   const rows = events as EventRow[];
-  const programTypeSet = new Set<string>();
-  const codeSet = new Set<string>();
-  for (const e of rows) {
-    if (e.program_type) programTypeSet.add(e.program_type.trim().toUpperCase());
-    if (e.code) codeSet.add(String(e.code).trim());
-  }
-  const programTypes = Array.from(programTypeSet)
-    .sort()
-    .map((value) => ({ value, label: programTypeToDisplay(value) }));
-  const codes = Array.from(codeSet).sort((a, b) => {
-    const na = Number(a);
-    const nb = Number(b);
-    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
-    return String(a).localeCompare(String(b));
-  });
-  return { programTypes, codes };
+  const eventsList: EventFilterOption[] = rows
+    .filter((e) => e.program_type && e.code)
+    .sort((a, b) => {
+      const pt = compareProgramCodes(a.program_type ?? "", b.program_type ?? "");
+      if (pt !== 0) return pt;
+      const na = Number(a.code);
+      const nb = Number(b.code);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      return String(a.code).localeCompare(String(b.code));
+    })
+    .map((e) => {
+      const programLabel = programTypeToDisplay(e.program_type);
+      const city = (e.city ?? "").trim();
+      const label = city ? `${programLabel} ${e.code} ${city}` : `${programLabel} ${e.code}`;
+      return { value: e.id, label: label.trim() };
+    });
+  return { events: eventsList };
 }
 
 export type PeopleCounts = {
@@ -105,15 +107,63 @@ function normalizeEnrollmentRows(
   });
 }
 
+/** Event shape when joined from enrollments. */
+type EventRef = { start_date: string | null; city: string | null } | null;
+
+/**
+ * Effective city = city from the first event the person participated in (by event start_date).
+ * Used so Participantes shows the city assigned in their first event, not only people.city.
+ */
+async function getEffectiveCityByPersonId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  personIds: string[]
+): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  if (personIds.length === 0) return out;
+
+  const { data: rows = [] } = await supabase
+    .from("enrollments")
+    .select("person_id, city, event:events(start_date, city)")
+    .in("person_id", personIds);
+
+  type Row = { person_id: string; city: string | null; event?: EventRef | EventRef[] };
+  const byPerson = new Map<string, { start_date: string | null; city: string | null }[]>();
+  for (const r of rows as Row[]) {
+    const event = Array.isArray(r.event) ? r.event[0] : r.event;
+    const start_date = event?.start_date ?? null;
+    const city = (r.city?.trim() ? r.city : event?.city?.trim() ? event.city : null) ?? null;
+    if (!byPerson.has(r.person_id)) byPerson.set(r.person_id, []);
+    byPerson.get(r.person_id)!.push({ start_date, city });
+  }
+
+  for (const pid of personIds) {
+    const list = byPerson.get(pid);
+    if (!list || list.length === 0) continue;
+    list.sort((a, b) => {
+      const da = a.start_date ?? "";
+      const db = b.start_date ?? "";
+      return da.localeCompare(db);
+    });
+    const first = list[0];
+    if (first.city) out[pid] = first.city;
+  }
+  return out;
+}
+
+function applyEffectiveCity(people: PersonRow[], effectiveCity: Record<string, string | null>): void {
+  for (const p of people) {
+    const city = effectiveCity[p.id];
+    if (city !== undefined) (p as PersonRow).city = city;
+  }
+}
+
 export async function getFilteredPeople(
   filters: PeopleFilters
 ): Promise<{ people: PersonRow[]; counts: PeopleCounts }> {
   const supabase = await createClient();
 
-  const hasEventFilter = Boolean(
-    (filters.programType && filters.programType.trim()) ||
-    (filters.eventCode && filters.eventCode.trim())
-  );
+  const eventId = filters.eventId?.trim();
+  const hasEventFilter = Boolean(eventId);
   const hasFilters =
     (filters.city && filters.city !== "all") ||
     (filters.paymentMethod && filters.paymentMethod !== "all") ||
@@ -127,6 +177,11 @@ export async function getFilteredPeople(
       .order("created_at", { ascending: false });
 
     const people = rows as PersonRow[];
+    const effectiveCity = await getEffectiveCityByPersonId(
+      supabase,
+      people.map((p) => p.id)
+    );
+    applyEffectiveCity(people, effectiveCity);
     const counts = await getPeopleCounts(supabase);
     return { people, counts };
   }
@@ -135,17 +190,9 @@ export async function getFilteredPeople(
   if (hasEventFilter) {
     const { data: rows = [] } = await supabase
       .from("enrollments")
-      .select("id, person_id, city, status, attended, event:events(program_type, code, scheduled_deletion_at)");
+      .select("id, person_id, city, status, attended")
+      .eq("event_id", eventId);
     enrollmentRows = normalizeEnrollmentRows(rows ?? []);
-    enrollmentRows = enrollmentRows.filter((e) => {
-      const ev = e.event;
-      if (!ev || ev.scheduled_deletion_at) return false;
-      if (filters.programType && filters.programType.trim() && ev.program_type !== filters.programType.trim())
-        return false;
-      if (filters.eventCode && filters.eventCode.trim() && ev.code !== filters.eventCode.trim())
-        return false;
-      return true;
-    });
   } else {
     const { data: rows = [] } = await supabase
       .from("enrollments")
@@ -190,13 +237,16 @@ export async function getFilteredPeople(
   }
 
   if (filters.city && filters.city !== "all" && matchingPersonIds.size > 0) {
-    const { data: peopleWithCity = [] } = await supabase
-      .from("people")
-      .select("id")
-      .in("id", Array.from(matchingPersonIds))
-      .eq("city", filters.city);
+    const effectiveCity = await getEffectiveCityByPersonId(
+      supabase,
+      Array.from(matchingPersonIds)
+    );
+    const wantCity = filters.city === "Sin ciudad" ? "" : filters.city;
     matchingPersonIds = new Set(
-      (peopleWithCity as { id: string }[]).map((p) => p.id)
+      Array.from(matchingPersonIds).filter((id) => {
+        const c = (effectiveCity[id] ?? "").trim();
+        return wantCity === "" ? !c : c === filters.city;
+      })
     );
   }
 
@@ -212,6 +262,11 @@ export async function getFilteredPeople(
     .order("created_at", { ascending: false });
 
   const people = rows as PersonRow[];
+  const effectiveCity = await getEffectiveCityByPersonId(
+    supabase,
+    people.map((p) => p.id)
+  );
+  applyEffectiveCity(people, effectiveCity);
   const counts = await getPeopleCounts(supabase);
   return { people, counts };
 }

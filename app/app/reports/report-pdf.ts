@@ -8,10 +8,14 @@ export function buildReportPdf(content: ReportContent): void {
   const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = margin;
-  const lineHeight = 6;
+  const lineHeight = 6.5;
+  const sectionGap = lineHeight * 2;
+  const bodyFontSize = 12;
+  const titleFontSize = 16;
 
-  const addLine = (text: string, fontSize?: number) => {
+  const addLine = (text: string, fontSize?: number, bold?: boolean) => {
     if (fontSize) doc.setFontSize(fontSize);
+    if (bold) doc.setFont("helvetica", "bold");
     const lines = doc.splitTextToSize(text, pageWidth);
     for (const line of lines) {
       if (y > pageHeight - margin - lineHeight) {
@@ -21,32 +25,43 @@ export function buildReportPdf(content: ReportContent): void {
       doc.text(line, margin, y);
       y += lineHeight;
     }
-    if (fontSize) doc.setFontSize(11);
+    if (bold) doc.setFont("helvetica", "normal");
+    if (fontSize) doc.setFontSize(bodyFontSize);
   };
 
-  doc.setFontSize(14);
+  doc.setFontSize(titleFontSize);
   addLine(`Informe Cierre de ${content.title}`);
-  doc.setFontSize(11);
+  doc.setFontSize(bodyFontSize);
   y += lineHeight;
 
+  addLine("Fechas", undefined, true);
+  addLine(`Empezó: ${content.startDate}`);
   addLine(`Finalizó: ${content.endDate}`);
-  y += lineHeight;
+  y += sectionGap;
 
+  addLine("Responsables", undefined, true);
   addLine(`Coordinador: ${content.coordinator}`);
   addLine(`Entrenadores: ${content.entrenadores}`);
   addLine(`Mentores: ${content.mentores}`);
   addLine(`Capitán mentores: ${content.capitanMentores}`);
-  y += lineHeight;
+  y += sectionGap;
 
+  addLine("Participantes", undefined, true);
   addLine(`Participantes que iniciaron: ${content.participantesIniciaron}`);
   addLine(`Participantes que no asistieron: ${content.participantesNoAsistieron}`);
   addLine(`Participantes que se retiraron: ${content.participantesRetiraron}`);
   addLine(`Participantes que culminaron: ${content.participantesCulminaron}`);
   addLine(`Entrolados Proposito: ${content.entroladosProposito}`);
+  for (const { method, sum } of content.propositoByMethod) {
+    addLine(`Proposito ${method}: ${formatCurrency(sum)}`);
+  }
   addLine(`Entrolados Conexión: ${content.entroladosConexion}`);
-  y += lineHeight;
+  for (const { method, sum } of content.conexionByMethod) {
+    addLine(`Conexión ${method}: ${formatCurrency(sum)}`);
+  }
+  y += sectionGap;
 
-  addLine("Pagos");
+  addLine("Pagos", undefined, true);
   for (const { method, count, sum } of content.paymentLines) {
     if (count > 0 || sum > 0) {
       addLine(`Pagos ${method}: ${count} participantes - ${formatCurrency(sum)}`);
@@ -55,9 +70,9 @@ export function buildReportPdf(content: ReportContent): void {
   if (content.feeAdministrativoCount > 0 || content.feeAdministrativoSum > 0) {
     addLine(`Fee Administrativo: ${content.feeAdministrativoCount} participantes - ${formatCurrency(content.feeAdministrativoSum)}`);
   }
-  addLine(`Pagos Backlogs: ${content.pagosBacklogsCount} participantes`);
+  addLine(`Pagos de Asistieron: ${formatCurrency(content.pagosAsistieronSum)}`);
   addLine(`Total = ${formatCurrency(content.total)}`);
-  y += lineHeight;
+  y += sectionGap;
 
   addLine("Notas");
   addLine(content.notes || "(Sin notas)");

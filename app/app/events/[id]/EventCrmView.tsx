@@ -97,8 +97,11 @@ function filterEnrollmentsByStatus(
 
 export function EventCrmView({
   data,
+  cityOptions,
 }: {
   data: EventWithEnrollments;
+  /** All cities from catalog (Administración > Ciudades). */
+  cityOptions: string[];
 }) {
   const router = useRouter();
 
@@ -377,6 +380,7 @@ export function EventCrmView({
         <EventParticipantsTable
           event={data}
           enrollments={filteredEnrollments}
+          cityOptions={cityOptions}
         />
       </div>
 

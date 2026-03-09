@@ -47,6 +47,8 @@ export async function getPersonWithEnrollments(
       confirmed,
       contract_signed,
       cca_signed,
+      withdrew,
+      finalized,
       admin_notes,
       angel_name,
       health_doc_signed,
@@ -110,6 +112,8 @@ export async function getPersonWithEnrollments(
     confirmed: boolean;
     contract_signed: boolean;
     cca_signed: boolean;
+    withdrew: boolean;
+    finalized: boolean;
     admin_notes: string | null;
     angel_name: string | null;
     health_doc_signed: boolean | null;
@@ -145,6 +149,8 @@ export async function getPersonWithEnrollments(
       confirmed: r.confirmed,
       contract_signed: r.contract_signed,
       cca_signed: r.cca_signed,
+      withdrew: r.withdrew ?? false,
+      finalized: r.finalized ?? false,
       admin_notes: r.admin_notes,
       angel_name: r.angel_name,
       health_doc_signed: r.health_doc_signed,

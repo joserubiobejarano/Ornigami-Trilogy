@@ -46,7 +46,6 @@ const METHOD_DB_TO_UI: Record<string, string> = {
 const PAYMENT_METHOD_OPTIONS = ["Square", "Afterpay", "Zelle", "Cash", "TDC"];
 
 const ESTADO_OPTIONS = ["BGK"] as const;
-const CIUDAD_OPTIONS = ["Miami", "Atlanta"] as const;
 const TL_ENROLADO_OPTIONS = ["Proposito", "Conexión"] as const;
 
 const HEADER_CELL_STICKY = "sticky top-0 z-10 bg-muted";
@@ -65,9 +64,12 @@ function mergeOptimisticRow(
 export function EventParticipantsTable({
   event,
   enrollments,
+  cityOptions,
 }: {
   event: EventRow;
   enrollments: EnrollmentRow[];
+  /** All cities from catalog (Administración > Ciudades). */
+  cityOptions: string[];
 }) {
   const router = useRouter();
   const [transferModalEnrollmentId, setTransferModalEnrollmentId] = useState<string | null>(null);
@@ -282,6 +284,9 @@ export function EventParticipantsTable({
               <th className={cn(HEADER_CELL_STICKY, "min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 TL enrolado
               </th>
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
+                Fecha<br />Inscripción
+              </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[110px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Envió Detalles
               </th>
@@ -330,7 +335,7 @@ export function EventParticipantsTable({
               <th className={cn(HEADER_CELL_STICKY, "min-w-[70px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Fee<br />Administrativo
               </th>
-              <th className={cn(HEADER_CELL_STICKY, "min-w-[320px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[420px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Observaciones
               </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
@@ -342,7 +347,7 @@ export function EventParticipantsTable({
             {              enrollments.length === 0 ? (
               <tr>
                 <td
-                  colSpan={event.program_type === "TL" ? 28 : 26}
+                  colSpan={event.program_type === "TL" ? 29 : 27}
                   className="px-2 py-4 text-center text-muted-foreground lg:px-4 lg:py-8"
                 >
                   Ningún participante coincide con esta vista.
@@ -358,6 +363,7 @@ export function EventParticipantsTable({
                     event={event}
                     eventCity={event.city}
                     enrollments={enrollments}
+                    cityOptions={cityOptions}
                     onBooleanChange={handleBooleanChange}
                     onBlurField={handleBlur}
                     onBlurPersonField={handleBlurPerson}
@@ -382,6 +388,7 @@ function EventParticipantRow({
   event,
   eventCity,
   enrollments,
+  cityOptions,
   onBooleanChange,
   onBlurField,
   onBlurPersonField,
@@ -394,6 +401,7 @@ function EventParticipantRow({
   event: EventRow;
   eventCity: string;
   enrollments: EnrollmentRow[];
+  cityOptions: string[];
   onBooleanChange: (
     id: string,
     field: BooleanField,
@@ -512,6 +520,7 @@ function EventParticipantRow({
         <CiudadSelectCell
           value={row.city}
           eventCity={eventCity}
+          cityOptions={cityOptions}
           onChange={(v) => onBlurField(row.id, "city", v)}
         />
       </td>
@@ -520,6 +529,11 @@ function EventParticipantRow({
           value={row.tl_enrolado}
           onChange={(v) => onBlurField(row.id, "tl_enrolado", v)}
         />
+      </td>
+      <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
+        {row.person?.created_at
+          ? new Date(row.person.created_at).toLocaleDateString(undefined, { dateStyle: "short" })
+          : "—"}
       </td>
       <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <BooleanCheckboxCell
@@ -612,7 +626,7 @@ function EventParticipantRow({
           onChange={(fee) => onPaymentFeeChange(row.id, fee)}
         />
       </td>
-      <td className="min-w-[320px] px-2 py-1 align-top text-center lg:px-4 lg:py-2">
+      <td className="min-w-[420px] px-4 py-1 align-top text-center lg:px-6 lg:py-2">
         <EditableCell
           value={row.admin_notes ?? ""}
           onBlur={(v) => onBlurField(row.id, "admin_notes", v)}
@@ -770,17 +784,17 @@ function EstadoMultiSelectCell({
 function CiudadSelectCell({
   value,
   eventCity,
+  cityOptions,
   onChange,
 }: {
   value: string | null;
   eventCity: string;
+  cityOptions: string[];
   onChange: (value: string) => void;
 }) {
   const displayValue = value?.trim() || eventCity?.trim() || "";
   const selectValue =
-    value && CIUDAD_OPTIONS.includes(value as (typeof CIUDAD_OPTIONS)[number])
-      ? value
-      : "";
+    value && cityOptions.includes(value) ? value : "";
 
   return (
     <select
@@ -789,7 +803,7 @@ function CiudadSelectCell({
       onChange={(e) => onChange(e.target.value || "")}
     >
       <option value="">{displayValue || "—"}</option>
-      {CIUDAD_OPTIONS.map((c) => (
+      {cityOptions.map((c) => (
         <option key={c} value={c}>
           {c}
         </option>

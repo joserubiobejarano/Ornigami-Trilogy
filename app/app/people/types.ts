@@ -38,6 +38,8 @@ export type EnrollmentWithEventAndPayments = {
   confirmed: boolean;
   contract_signed: boolean;
   cca_signed: boolean;
+  withdrew: boolean;
+  finalized: boolean;
   admin_notes: string | null;
   angel_name: string | null;
   health_doc_signed: boolean | null;

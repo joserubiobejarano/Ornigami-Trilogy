@@ -70,6 +70,11 @@ export type BGKRow = {
   admin_notes: string | null;
 };
 
+/** Status is blank (null, empty, or whitespace-only). */
+function isStatusBlank(status: string | null | undefined): boolean {
+  return !String(status ?? "").trim();
+}
+
 export async function getBGKEnrollments(): Promise<BGKRow[]> {
   const supabase = await createClient();
 
@@ -81,10 +86,28 @@ export async function getBGKEnrollments(): Promise<BGKRow[]> {
     .ilike("status", "%BGK%");
 
   const raw = (rows ?? []) as RawRow[];
+  const personIds = [...new Set(raw.map((r) => r.person_id))];
+
+  const personIdsCompleted = new Set<string>();
+  if (personIds.length > 0) {
+    const { data: attendedRows = [] } = await supabase
+      .from("enrollments")
+      .select("person_id, status")
+      .in("person_id", personIds)
+      .eq("attended", true);
+
+    for (const e of attendedRows as { person_id: string; status: string | null }[]) {
+      if (isStatusBlank(e.status)) {
+        personIdsCompleted.add(e.person_id);
+      }
+    }
+  }
+
   const result: BGKRow[] = [];
 
   for (const r of raw) {
     if (!hasBGKTag(r.status)) continue;
+    if (personIdsCompleted.has(r.person_id)) continue;
 
     const event = Array.isArray(r.event) ? r.event[0] ?? null : r.event;
     const person = Array.isArray(r.person) ? r.person[0] ?? null : r.person;

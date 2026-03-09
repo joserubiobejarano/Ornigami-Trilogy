@@ -121,6 +121,9 @@ export function BGKList({ rows }: { rows: BGKRow[] }) {
               <th className="px-4 py-3 text-left font-medium">Ciudad</th>
               <th className="px-4 py-3 text-left font-medium">Entrenamiento</th>
               <th className="px-4 py-3 text-center font-medium">
+                Fecha Inscripción
+              </th>
+              <th className="px-4 py-3 text-center font-medium">
                 Días restantes
               </th>
               <th className="px-4 py-3 text-right font-medium">Acciones</th>
@@ -130,7 +133,7 @@ export function BGKList({ rows }: { rows: BGKRow[] }) {
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   {rows.length === 0
@@ -146,6 +149,13 @@ export function BGKList({ rows }: { rows: BGKRow[] }) {
                   <td className="px-4 py-3">{row.phone ?? "—"}</td>
                   <td className="px-4 py-3">{row.city ?? "—"}</td>
                   <td className="px-4 py-3">{row.entrenamientoLabel}</td>
+                  <td className="px-4 py-3 text-center">
+                    {row.createdAt
+                      ? new Date(row.createdAt).toLocaleDateString(undefined, {
+                          dateStyle: "short",
+                        })
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     {row.daysRemaining === null
                       ? "—"

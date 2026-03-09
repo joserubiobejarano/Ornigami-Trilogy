@@ -61,24 +61,24 @@ export function ReportsList({ reports }: { reports: ReportListItem[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {reports.map((item) => {
         const title = `${programTypeToDisplay(item.program_type)} ${item.code}`;
         const subtitle = [item.city, formatDate(item.end_date)].filter(Boolean).join(" · ");
         return (
           <div
             key={item.id}
-            className="flex flex-col rounded-md border bg-card p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+            className="flex flex-col rounded-md border-2 bg-card p-3 hover:bg-muted/30 transition-colors cursor-pointer"
             onClick={() => router.push(`/app/reports/${item.event_id}`)}
           >
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">{title}</h3>
+              <h3 className="font-semibold text-base truncate">{title}</h3>
               {subtitle ? (
                 <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
               ) : null}
             </div>
             <div
-              className="flex items-center gap-2 mt-4 pt-3 border-t"
+              className="flex items-center gap-2 mt-3 pt-2 border-t"
               onClick={(e) => e.stopPropagation()}
             >
               <Button

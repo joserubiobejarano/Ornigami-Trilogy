@@ -21,6 +21,8 @@ const PAYMENT_METHOD_UI_TO_DB: Record<string, string> = {
   TDC: "tdc",
 };
 
+export type PaymentEntry = { method: string; amount: number | null };
+
 export async function submitParticipantForm(
   eventId: string,
   data: {
@@ -30,8 +32,8 @@ export async function submitParticipantForm(
     phone?: string;
     email: string;
     angel_name?: string;
-    cantidad?: number | null;
-    payment_method?: string;
+    /** Up to 2 payment method + amount entries; consolidated by method before insert. */
+    payments: PaymentEntry[];
   }
 ): Promise<SubmitParticipantFormResult> {
   const headersList = await headers();
@@ -69,7 +71,7 @@ export async function submitParticipantForm(
     phone: String(data.phone ?? "").trim() || undefined,
     email: String(data.email ?? "").trim(),
     angel_name: String(data.angel_name ?? "").trim() || undefined,
-    cantidad: data.cantidad ?? null,
+    cantidad: null as number | null,
   };
 
   const { data: formRow, error: formInsertError } = await supabase
@@ -161,15 +163,39 @@ export async function submitParticipantForm(
     changes: [],
   });
 
-  if (data.payment_method) {
-    const methodDb = PAYMENT_METHOD_UI_TO_DB[data.payment_method];
-    if (methodDb) {
+  const payments = data.payments ?? [];
+  const byMethod: Record<string, number | null> = {};
+  for (const p of payments) {
+    const methodDb = p.method ? PAYMENT_METHOD_UI_TO_DB[p.method] : null;
+    if (!methodDb) continue;
+    const amount = p.amount != null && !Number.isNaN(Number(p.amount)) ? Number(p.amount) : null;
+    if (byMethod[methodDb] != null && amount != null) {
+      byMethod[methodDb] = (byMethod[methodDb] ?? 0) + amount;
+    } else if (amount != null) {
+      byMethod[methodDb] = amount;
+    } else {
+      byMethod[methodDb] = byMethod[methodDb] ?? null;
+    }
+  }
+
+  let totalAmount: number | null = null;
+  for (const methodDb of Object.keys(byMethod)) {
+    const amount = byMethod[methodDb];
+    if (amount != null && amount > 0) {
       await supabase.from("payments").insert({
         enrollment_id: result.enrollmentId,
         method: methodDb,
-        amount: data.cantidad ?? null,
+        amount,
       });
+      totalAmount = (totalAmount ?? 0) + amount;
     }
+  }
+
+  if (totalAmount != null && totalAmount > 0) {
+    await supabase
+      .from("enrollments")
+      .update({ cantidad: totalAmount })
+      .eq("id", result.enrollmentId);
   }
 
   return { success: true };

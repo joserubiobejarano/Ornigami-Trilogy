@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sortByProgramOrder } from "@/lib/program-order";
 
 export type AppUserRow = { id: string; email: string; created_at: string | null };
 export type CityRow = { id: string; name: string; created_at: string | null };
@@ -79,10 +80,10 @@ export async function listProgramTypes(): Promise<ProgramTypeRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("program_types")
-    .select("id, code, label, created_at")
-    .order("code");
+    .select("id, code, label, created_at");
   if (error) return [];
-  return (data ?? []) as ProgramTypeRow[];
+  const rows = (data ?? []) as ProgramTypeRow[];
+  return sortByProgramOrder(rows, (r) => r.code);
 }
 
 export async function addProgramType(formData: FormData): Promise<{ success: true } | { success: false; error: string }> {

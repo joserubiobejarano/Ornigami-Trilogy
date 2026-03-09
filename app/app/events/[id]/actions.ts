@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { removeBGKFromPriorEnrollments, resolveOrCreatePersonAndEnroll } from "@/lib/enrollment";
+import { resolveOrCreatePersonAndEnroll } from "@/lib/enrollment";
 import { writeAuditLog } from "@/lib/audit";
 import type {
   EnrollmentRow,
@@ -110,7 +110,7 @@ export async function getEventWithEnrollments(
       tl_enrolado,
       created_at,
       replaced_by_enrollment_id,
-      person:people(first_name, last_name, phone, email)
+      person:people(first_name, last_name, phone, email, created_at)
     `
     )
     .eq("event_id", eventId)
@@ -213,6 +213,7 @@ export async function getEventWithEnrollments(
     last_name: null,
     phone: null,
     email: "",
+    created_at: null as string | null,
   };
 
   const enrollments: EnrollmentRow[] = (enrollmentRows ?? []).map((r: EnrollRow) => {
@@ -406,8 +407,6 @@ export async function addExistingParticipantToEvent(
   if (!enrollmentInserted?.id) {
     return { success: false, error: "No se pudo crear la inscripción." };
   }
-
-  await removeBGKFromPriorEnrollments(supabase, personId, enrollmentInserted.id);
 
   // Optional backfill: set people.city from event if supported; never block on this
   if (eventCity != null) {

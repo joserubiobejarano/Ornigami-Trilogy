@@ -58,7 +58,7 @@ export function DuplicateEventModal({
         <DialogHeader>
           <DialogTitle>Duplicar evento</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Crear un nuevo evento a partir de {sourceEvent.program_type} {sourceEvent.code} ({sourceEvent.city}). Opcionalmente copia todos los participantes.
+            Crear un nuevo evento a partir de {sourceEvent.program_type} {sourceEvent.code} ({sourceEvent.city}). Elige qué participantes copiar al nuevo evento.
           </p>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
@@ -118,17 +118,34 @@ export function DuplicateEventModal({
               placeholder="Coordinador"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="dup_copy_participants"
-              name="copy_participants"
-              defaultChecked
-              className="h-4 w-4 rounded border border-input"
-            />
-            <Label htmlFor="dup_copy_participants" className="font-normal">
-              Copiar todos los participantes al nuevo evento
-            </Label>
+          <div className="space-y-3">
+            <Label className="font-medium">Participantes a copiar</Label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="copy_mode"
+                  value="finalized"
+                  defaultChecked
+                  required
+                  className="h-4 w-4 border border-input"
+                />
+                <span className="text-sm font-normal">
+                  Copiar con participantes que finalizaron
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="copy_mode"
+                  value="backlog_or_no_asistio"
+                  className="h-4 w-4 border border-input"
+                />
+                <span className="text-sm font-normal">
+                  Copiar con Backlogs y los que no asistieron
+                </span>
+              </label>
+            </div>
           </div>
           {state && !state.success && (
             <p className="text-sm text-destructive">{state.error}</p>

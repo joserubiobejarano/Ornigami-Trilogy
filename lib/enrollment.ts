@@ -153,8 +153,6 @@ export async function resolveOrCreatePersonAndEnroll(
     return { success: false, error: "No se pudo crear la inscripción." };
   }
 
-  await removeBGKFromPriorEnrollments(supabase, personId, enrollmentInserted.id);
-
   if (eventCity != null && (!personCity || !personCity.trim())) {
     await supabase.from("people").update({ city: eventCity }).eq("id", personId);
   }

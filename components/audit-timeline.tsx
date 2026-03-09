@@ -53,17 +53,22 @@ export function AuditTimeline({
   }
 
   return (
-    <ul className="space-y-2 text-sm">
+    <ul className="space-y-4 text-sm">
       {entries.map((entry) => (
         <li
           key={entry.id}
-          className="flex flex-col gap-0.5 rounded border border-border/60 bg-muted/30 px-3 py-2"
+          className="flex flex-col gap-1 rounded border-2 border-black bg-white px-3 py-2.5"
         >
-          <span className="text-muted-foreground">
+          <span className="text-base text-foreground">
             {entry.actor_label}
             {entry.event_label ? ` · Evento: ${entry.event_label}` : ""} · {formatRelativeTime(entry.changed_at)}
           </span>
-          <span className="font-medium">{renderEntrySummary(entry)}</span>
+          {entry.participant_reference ? (
+            <span className="text-sm text-foreground">
+              Participante: {entry.participant_reference}
+            </span>
+          ) : null}
+          <span className="text-base font-medium text-foreground">{renderEntrySummary(entry)}</span>
         </li>
       ))}
     </ul>
