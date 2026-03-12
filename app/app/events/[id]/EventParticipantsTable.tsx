@@ -15,6 +15,7 @@ import {
   updateEnrollmentPaymentFee,
   updatePersonField,
   deleteEnrollment,
+  cancelTransferEnrollment,
 } from "./actions";
 import { TransferSpotModal } from "./TransferSpotModal";
 import type { EnrollmentRow, EventRow } from "@/app/app/events/types";
@@ -208,6 +209,22 @@ export function EventParticipantsTable({
     [router]
   );
 
+  const handleCancelTransfer = useCallback(
+    async (fromEnrollmentId: string) => {
+      if (
+        !confirm(
+          "¿Cancelar esta transferencia? Se quitará el vínculo y las notas de transferencia en ambos participantes. La inscripción del receptor se mantendrá."
+        )
+      ) {
+        return;
+      }
+      const result = await cancelTransferEnrollment(fromEnrollmentId);
+      if (result.success) router.refresh();
+      else alert(result.error);
+    },
+    [router]
+  );
+
   const handleBlurPerson = useCallback(
     async (
       personId: string,
@@ -278,6 +295,9 @@ export function EventParticipantsTable({
               <th className={cn(HEADER_CELL_STICKY, "min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Estado
               </th>
+              <th className={cn(HEADER_CELL_STICKY, "min-w-[140px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
+                Transferencia
+              </th>
               <th className={cn(HEADER_CELL_STICKY, "min-w-[100px] px-2 py-1.5 text-center align-middle font-medium lg:px-4 lg:py-3")}>
                 Ciudad
               </th>
@@ -347,7 +367,7 @@ export function EventParticipantsTable({
             {              enrollments.length === 0 ? (
               <tr>
                 <td
-                  colSpan={event.program_type === "TL" ? 29 : 27}
+                  colSpan={event.program_type === "TL" ? 30 : 28}
                   className="px-2 py-4 text-center text-muted-foreground lg:px-4 lg:py-8"
                 >
                   Ningún participante coincide con esta vista.
@@ -371,6 +391,7 @@ export function EventParticipantsTable({
                     onPaymentFeeChange={handlePaymentFeeChange}
                     onRemove={handleRemove}
                     onTransfer={row.replaced_by_enrollment_id ? undefined : () => setTransferModalEnrollmentId(row.id)}
+                    onCancelTransfer={row.replaced_by_enrollment_id ? () => handleCancelTransfer(row.id) : undefined}
                   />
                 );
               })
@@ -396,6 +417,7 @@ function EventParticipantRow({
   onPaymentFeeChange,
   onRemove,
   onTransfer,
+  onCancelTransfer,
 }: {
   row: EnrollmentRow;
   event: EventRow;
@@ -421,21 +443,16 @@ function EventParticipantRow({
   onPaymentFeeChange: (id: string, value: number | null) => void;
   onRemove: (id: string) => void;
   onTransfer?: () => void;
+  onCancelTransfer?: () => void;
 }) {
   const isTransferrer = Boolean(row.replaced_by_enrollment_id);
   const isRecipient = enrollments.some(
     (e) => e.replaced_by_enrollment_id === row.id
   );
-  const transferrer = enrollments.find((e) => e.replaced_by_enrollment_id === row.id);
-  const transferFeeDisplay =
-    transferrer && transferrer.cantidad != null
-      ? Math.round(Number(transferrer.cantidad) * 0.1)
-      : null;
-  const feeDisplayValue =
-    row.payment_fee ?? (isRecipient ? transferFeeDisplay : null);
+  const feeDisplayValue = row.payment_fee;
 
-  const showRed = isTransferrer && row.status === "transferred_out";
-  const showBlue = isRecipient && row.status === "cupo_recibido";
+  const showRed = isTransferrer;
+  const showBlue = isRecipient;
 
   const firstFourCellBg = showRed
     ? "bg-red-100 dark:bg-red-950/95"
@@ -511,10 +528,10 @@ function EventParticipantRow({
         </div>
       </td>
       <td className="px-2 py-1 align-top text-center lg:px-4 lg:py-2">
-        <EstadoCell
-          row={row}
-          onBlurField={onBlurField}
-        />
+        <EstadoCell row={row} enrollments={enrollments} onBlurField={onBlurField} />
+      </td>
+      <td className="px-2 py-1 align-top text-center lg:px-4 lg:py-2">
+        <TransferenciaCell row={row} enrollments={enrollments} />
       </td>
       <td className="px-2 py-1 align-middle text-center lg:px-4 lg:py-2">
         <CiudadSelectCell
@@ -635,27 +652,32 @@ function EventParticipantRow({
       </td>
       <td className="px-2 py-1 align-middle lg:px-4 lg:py-2">
         <div className="flex justify-center">
-          <div className="grid grid-cols-[1fr_auto] gap-1 items-center min-w-[160px] lg:gap-1.5 lg:min-w-[180px]">
-            <div className="flex justify-end min-h-7 lg:min-h-8">
-              {onTransfer ? (
-                <Button type="button" variant="outline" size="sm" className="text-xs lg:text-sm" onClick={onTransfer}>
-                  Transferir cupo
-                </Button>
-              ) : (
-                <span className="inline-block w-[100px]" aria-hidden />
-              )}
-            </div>
-            <div className="flex justify-start min-h-7 lg:min-h-8">
+          <div className="flex flex-wrap gap-1 items-center justify-center min-w-[160px] lg:gap-1.5 lg:min-w-[200px]">
+            {onTransfer && (
+              <Button type="button" variant="outline" size="sm" className="text-xs lg:text-sm" onClick={onTransfer}>
+                Transferir cupo
+              </Button>
+            )}
+            {onCancelTransfer && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive lg:text-sm"
-                onClick={() => onRemove(row.id)}
+                className="text-xs lg:text-sm"
+                onClick={onCancelTransfer}
               >
-                Eliminar
+                Cancelar transferencia
               </Button>
-            </div>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive lg:text-sm"
+              onClick={() => onRemove(row.id)}
+            >
+              Eliminar
+            </Button>
           </div>
         </div>
       </td>
@@ -684,34 +706,61 @@ function BooleanCheckboxCell({
 }
 
 const PENDING_CONTRACT_TAG = "PENDING_CONTRACT";
+const TRANSFER_STATUSES = ["transferred_out", "cupo_recibido"];
+
+/** Status string without transfer-only values; used for Estado (backlog) column only. */
+function statusForBacklog(status: string | null | undefined): string {
+  const raw = String(status ?? "").trim();
+  if (!raw) return "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((t) => t && !TRANSFER_STATUSES.includes(t))
+    .join(", ")
+    .trim();
+}
 
 function EstadoCell({
   row,
   onBlurField,
 }: {
   row: EnrollmentRow;
+  enrollments: EnrollmentRow[];
   onBlurField: (id: string, field: "status", value: string) => void;
 }) {
-  if (row.status === "transferred_out") {
+  const value = statusForBacklog(row.status);
+  return (
+    <EstadoMultiSelectCell
+      value={value}
+      onChange={(v) => onBlurField(row.id, "status", v)}
+    />
+  );
+}
+
+function TransferenciaCell({
+  row,
+  enrollments,
+}: {
+  row: EnrollmentRow;
+  enrollments: EnrollmentRow[];
+}) {
+  const isTransferrer = Boolean(row.replaced_by_enrollment_id);
+  const isRecipient = enrollments.some((e) => e.replaced_by_enrollment_id === row.id);
+  if (isTransferrer) {
     return (
       <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
         Cupo transferido
       </span>
     );
   }
-  if (row.status === "cupo_recibido") {
+  if (isRecipient) {
     return (
       <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
         Cupo recibido
       </span>
     );
   }
-  return (
-    <EstadoMultiSelectCell
-      value={row.status}
-      onChange={(v) => onBlurField(row.id, "status", v)}
-    />
-  );
+  return <span className="text-muted-foreground">—</span>;
 }
 
 function EstadoMultiSelectCell({

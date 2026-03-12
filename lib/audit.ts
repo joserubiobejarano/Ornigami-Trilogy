@@ -16,6 +16,7 @@ export type AuditAction =
   | "reschedule"
   | "transfer_out"
   | "transfer_in"
+  | "transfer_cancel"
   | "reschedule_out"
   | "reschedule_in";
 

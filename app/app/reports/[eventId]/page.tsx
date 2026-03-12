@@ -61,22 +61,40 @@ export default async function ReportPage({
         <div>
           <p className="font-medium mb-1 text-[1.0625rem]">Participantes</p>
           <ul className="list-none space-y-1">
+            <li>Participantes inscritos: {content.participantesInscritos}</li>
             <li>Participantes que iniciaron: {content.participantesIniciaron}</li>
             <li>Participantes que no asistieron: {content.participantesNoAsistieron}</li>
             <li>Participantes que se retiraron: {content.participantesRetiraron}</li>
             <li>Participantes que culminaron: {content.participantesCulminaron}</li>
+            <li>Cupos transferidos: {content.cuposTransferidos}</li>
+            <li>Cupos recibidos: {content.cuposRecibidos}</li>
+            <li>Backlogs: {content.backlogs}</li>
             <li>Entrolados Proposito: {content.entroladosProposito}</li>
-            {content.propositoByMethod.map(({ method, sum }) => (
-              <li key={`proposito-${method}`} className="pl-4">
-                Proposito {method}: {formatCurrency(sum)}
-              </li>
-            ))}
-            <li>Entrolados Conexión: {content.entroladosConexion}</li>
-            {content.conexionByMethod.map(({ method, sum }) => (
-              <li key={`conexion-${method}`} className="pl-4">
-                Conexión {method}: {formatCurrency(sum)}
-              </li>
-            ))}
+            {content.propositoByMethod
+              .filter(({ sum }) => sum > 0)
+              .map(({ method, sum }) => (
+                <li key={`proposito-${method}`} className="pl-4">
+                  Proposito {method}: {formatCurrency(sum)}
+                </li>
+              ))}
+            {content.totalProposito > 0 && (
+              <li className="pl-4 font-medium">Total Proposito: {formatCurrency(content.totalProposito)}</li>
+            )}
+            {(content.entroladosConexion > 0 || content.totalConexion > 0 || content.conexionByMethod.some((m) => m.sum > 0)) && (
+              <>
+                <li>Entrolados Conexión: {content.entroladosConexion}</li>
+                {content.conexionByMethod
+                  .filter(({ sum }) => sum > 0)
+                  .map(({ method, sum }) => (
+                    <li key={`conexion-${method}`} className="pl-4">
+                      Conexión {method}: {formatCurrency(sum)}
+                    </li>
+                  ))}
+                {content.totalConexion > 0 && (
+                  <li className="pl-4 font-medium">Total Conexión: {formatCurrency(content.totalConexion)}</li>
+                )}
+              </>
+            )}
           </ul>
         </div>
 

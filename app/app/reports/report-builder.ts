@@ -9,9 +9,9 @@ const PAYMENT_METHODS: { key: string; label: string }[] = [
   { key: "tdc", label: "TDC" },
 ];
 
-/** Enrollment is counted in payment sums only if attended and not BGK. */
+/** Enrollment is counted in payment sums only if not BGK (all other participants included). */
 function eligibleForPayment(e: EnrollmentRow): boolean {
-  return !!e.attended && !hasBGKStatus(e.status);
+  return !hasBGKStatus(e.status);
 }
 
 export type ReportContent = {
@@ -22,13 +22,17 @@ export type ReportContent = {
   entrenadores: string;
   mentores: string;
   capitanMentores: string;
+  participantesInscritos: number;
   participantesIniciaron: number;
   participantesNoAsistieron: number;
   participantesRetiraron: number;
   participantesCulminaron: number;
+  cuposTransferidos: number;
+  cuposRecibidos: number;
+  backlogs: number;
   entroladosProposito: number;
   entroladosConexion: number;
-  /** Payment sums by method (only eligible: attended, non-BGK). */
+  /** Payment sums by method (eligible: non-BGK only). */
   paymentLines: { method: string; count: number; sum: number }[];
   feeAdministrativoSum: number;
   feeAdministrativoCount: number;
@@ -37,8 +41,10 @@ export type ReportContent = {
   notes: string;
   /** Sum by method for participants with tl_enrolado === "Proposito". */
   propositoByMethod: { method: string; sum: number }[];
+  totalProposito: number;
   /** Sum by method for participants with tl_enrolado === "Conexión". */
   conexionByMethod: { method: string; sum: number }[];
+  totalConexion: number;
 };
 
 export function formatCurrency(n: number): string {
@@ -90,10 +96,15 @@ export function buildReportContent(
   notes: string
 ): ReportContent {
   const title = `${programTypeToDisplay(event.program_type)} ${event.code}`;
+  const participantesInscritos = enrollments.length;
   const attendedCount = enrollments.filter((e) => e.attended).length;
   const finalizedCount = enrollments.filter((e) => e.finalized).length;
   const participantesNoAsistieron = enrollments.filter((e) => e.no_asistio).length;
   const participantesRetiraron = enrollments.filter((e) => e.withdrew).length;
+  const cuposTransferidos = enrollments.filter((e) => e.replaced_by_enrollment_id != null).length;
+  const recipientIds = new Set(enrollments.filter((e) => e.replaced_by_enrollment_id != null).map((e) => e.replaced_by_enrollment_id!));
+  const cuposRecibidos = enrollments.filter((e) => recipientIds.has(e.id)).length;
+  const backlogs = enrollments.filter((e) => hasBGKStatus(e.status)).length;
   const entroladosProposito = enrollments.filter((e) => e.tl_enrolado === "Proposito").length;
   const entroladosConexion = enrollments.filter((e) => e.tl_enrolado === "Conexión").length;
 
@@ -133,6 +144,8 @@ export function buildReportContent(
 
   const propositoByMethod: { method: string; sum: number }[] = [];
   const conexionByMethod: { method: string; sum: number }[] = [];
+  let totalProposito = 0;
+  let totalConexion = 0;
   for (const { key, label } of PAYMENT_METHODS) {
     let propSum = 0;
     let connSum = 0;
@@ -145,6 +158,8 @@ export function buildReportContent(
     }
     propositoByMethod.push({ method: label, sum: propSum });
     conexionByMethod.push({ method: label, sum: connSum });
+    totalProposito += propSum;
+    totalConexion += connSum;
   }
 
   return {
@@ -155,10 +170,14 @@ export function buildReportContent(
     entrenadores: event.entrenadores?.trim() ?? "—",
     mentores: event.mentores?.trim() ?? "—",
     capitanMentores: event.capitan_mentores?.trim() ?? "—",
+    participantesInscritos,
     participantesIniciaron: attendedCount,
     participantesNoAsistieron,
     participantesRetiraron,
     participantesCulminaron: finalizedCount,
+    cuposTransferidos,
+    cuposRecibidos,
+    backlogs,
     entroladosProposito,
     entroladosConexion,
     paymentLines,
@@ -168,7 +187,9 @@ export function buildReportContent(
     total,
     notes: notes?.trim() ?? "",
     propositoByMethod,
+    totalProposito,
     conexionByMethod,
+    totalConexion,
   };
 }
 
@@ -188,18 +209,31 @@ export function formatReportAsText(content: ReportContent): string {
     `Capitán mentores: ${content.capitanMentores}`,
     "",
     "Participantes",
+    `Participantes inscritos: ${content.participantesInscritos}`,
     `Participantes que iniciaron: ${content.participantesIniciaron}`,
     `Participantes que no asistieron: ${content.participantesNoAsistieron}`,
     `Participantes que se retiraron: ${content.participantesRetiraron}`,
     `Participantes que culminaron: ${content.participantesCulminaron}`,
+    `Cupos transferidos: ${content.cuposTransferidos}`,
+    `Cupos recibidos: ${content.cuposRecibidos}`,
+    `Backlogs: ${content.backlogs}`,
     `Entrolados Proposito: ${content.entroladosProposito}`,
   ];
-  for (const { method, sum } of content.propositoByMethod) {
+  for (const { method, sum } of content.propositoByMethod.filter((m) => m.sum > 0)) {
     lines.push(`Proposito ${method}: ${formatCurrency(sum)}`);
   }
-  lines.push(`Entrolados Conexión: ${content.entroladosConexion}`);
-  for (const { method, sum } of content.conexionByMethod) {
-    lines.push(`Conexión ${method}: ${formatCurrency(sum)}`);
+  if (content.totalProposito > 0) {
+    lines.push(`Total Proposito: ${formatCurrency(content.totalProposito)}`);
+  }
+  const hasConexion = content.entroladosConexion > 0 || content.totalConexion > 0 || content.conexionByMethod.some((m) => m.sum > 0);
+  if (hasConexion) {
+    lines.push(`Entrolados Conexión: ${content.entroladosConexion}`);
+    for (const { method, sum } of content.conexionByMethod.filter((m) => m.sum > 0)) {
+      lines.push(`Conexión ${method}: ${formatCurrency(sum)}`);
+    }
+    if (content.totalConexion > 0) {
+      lines.push(`Total Conexión: ${formatCurrency(content.totalConexion)}`);
+    }
   }
   lines.push("");
   lines.push("Pagos");

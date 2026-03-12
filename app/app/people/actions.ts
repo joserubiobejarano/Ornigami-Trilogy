@@ -27,7 +27,6 @@ const BACKLOG_STATUSES = [
   "no_show_paid",
   "no_show_unpaid",
   "rescheduled",
-  "transferred_out",
 ] as const;
 
 export type PeopleFilters = {
@@ -84,6 +83,7 @@ type EnrollRow = {
   city: string | null;
   status: string;
   attended: boolean;
+  replaced_by_enrollment_id?: string | null;
 };
 
 type EnrollRowWithEvent = EnrollRow & {
@@ -92,7 +92,7 @@ type EnrollRowWithEvent = EnrollRow & {
 
 /** Supabase returns nested FK relations as array; normalize to single object. */
 function normalizeEnrollmentRows(
-  rows: { id: string; person_id: string; city: unknown; status: unknown; attended: unknown; event?: unknown }[]
+  rows: { id: string; person_id: string; city: unknown; status: unknown; attended: unknown; replaced_by_enrollment_id?: unknown; event?: unknown }[]
 ): EnrollRowWithEvent[] {
   return rows.map((r) => {
     const event = Array.isArray(r.event) ? r.event[0] : r.event;
@@ -102,6 +102,7 @@ function normalizeEnrollmentRows(
       city: r.city as string | null,
       status: r.status as string,
       attended: r.attended as boolean,
+      replaced_by_enrollment_id: r.replaced_by_enrollment_id as string | null | undefined,
       event: event as EnrollRowWithEvent["event"],
     };
   });
@@ -190,13 +191,13 @@ export async function getFilteredPeople(
   if (hasEventFilter) {
     const { data: rows = [] } = await supabase
       .from("enrollments")
-      .select("id, person_id, city, status, attended")
+      .select("id, person_id, city, status, attended, replaced_by_enrollment_id")
       .eq("event_id", eventId);
     enrollmentRows = normalizeEnrollmentRows(rows ?? []);
   } else {
     const { data: rows = [] } = await supabase
       .from("enrollments")
-      .select("id, person_id, city, status, attended");
+      .select("id, person_id, city, status, attended, replaced_by_enrollment_id");
     enrollmentRows = normalizeEnrollmentRows(rows ?? []);
   }
 
@@ -222,6 +223,7 @@ export async function getFilteredPeople(
   for (const e of enrollmentRows) {
     const inBacklog =
       !e.attended &&
+      !e.replaced_by_enrollment_id &&
       (BACKLOG_STATUSES.includes(e.status as (typeof BACKLOG_STATUSES)[number]) ||
         enrollmentIdsWithPayment.has(e.id));
     const paymentMethod = paymentMethodByEnrollmentId[e.id];
@@ -276,16 +278,17 @@ async function getPeopleCounts(
 ): Promise<PeopleCounts> {
   const { data: enrollmentRows } = await supabase
     .from("enrollments")
-    .select("id, person_id, status, attended");
+    .select("id, person_id, status, attended, replaced_by_enrollment_id");
 
-  type EnrollRow = {
+  type EnrollRowCount = {
     id: string;
     person_id: string;
     status: string;
     attended: boolean;
+    replaced_by_enrollment_id?: string | null;
   };
 
-  const enrollmentRowsTyped = (enrollmentRows ?? []) as EnrollRow[];
+  const enrollmentRowsTyped = (enrollmentRows ?? []) as EnrollRowCount[];
   const enrollmentIds = enrollmentRowsTyped.map((r) => r.id);
   const enrollmentIdToPersonId = new Map(
     enrollmentRowsTyped.map((r) => [r.id, r.person_id])
@@ -333,6 +336,7 @@ async function getPeopleCounts(
   for (const e of enrollmentRowsTyped) {
     const inBacklog =
       !e.attended &&
+      !e.replaced_by_enrollment_id &&
       (BACKLOG_STATUSES.includes(e.status as (typeof BACKLOG_STATUSES)[number]) ||
         enrollmentIdsWithPayment.has(e.id));
     if (inBacklog) backlogTotal += 1;

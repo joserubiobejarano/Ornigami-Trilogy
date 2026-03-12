@@ -3,6 +3,24 @@ import type { EnrollmentRow, EventRow } from "@/app/app/events/types";
 import { programTypeToDisplay } from "@/lib/program-display";
 
 const PAYMENT_METHOD_OPTIONS = ["Square", "Afterpay", "Zelle", "Cash", "TDC"];
+const TRANSFER_STATUSES = ["transferred_out", "cupo_recibido"];
+
+function statusForBacklog(status: string | null | undefined): string {
+  const raw = String(status ?? "").trim();
+  if (!raw) return "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((t) => t && !TRANSFER_STATUSES.includes(t))
+    .join(", ")
+    .trim();
+}
+
+function transferLabel(e: EnrollmentRow, enrollments: EnrollmentRow[]): string {
+  if (e.replaced_by_enrollment_id) return "Cupo transferido";
+  if (enrollments.some((r) => r.replaced_by_enrollment_id === e.id)) return "Cupo recibido";
+  return "";
+}
 
 function escapeCsvCell(value: string): string {
   const s = String(value ?? "").trim();
@@ -23,6 +41,7 @@ export function exportParticipantsCSV(
     "Teléfono",
     "Ángel",
     "Estado",
+    "Transferencia",
     "Ciudad",
     "TL enrolado",
     "Envió Detalles",
@@ -47,7 +66,8 @@ export function exportParticipantsCSV(
       e.person?.email ?? "",
       e.person?.phone ?? "",
       e.angel_name ?? "",
-      e.status ?? "",
+      statusForBacklog(e.status) ?? "",
+      transferLabel(e, enrollments) ?? "",
       e.city ?? "",
       e.tl_enrolado ?? "",
       e.details_sent ? "Sí" : "No",
@@ -130,7 +150,7 @@ export function buildParticipantsTablePdf(
       (e.person?.first_name ?? "").slice(0, 18),
       (e.person?.last_name ?? "").slice(0, 18),
       (e.person?.email ?? "").slice(0, 32),
-      (e.status ?? "").slice(0, 14),
+      (statusForBacklog(e.status) || transferLabel(e, enrollments) || "").slice(0, 14),
       e.attended ? "Sí" : "No",
       e.finalized ? "Sí" : "No",
       (e.admin_notes ?? "").slice(0, 38),

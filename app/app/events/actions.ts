@@ -231,7 +231,7 @@ export async function duplicateEvent(
   const { data: rawSourceEnrollments } = await supabase
     .from("enrollments")
     .select(
-      "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, contacted, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew, no_asistio"
+      "id, person_id, status, attended, details_sent, confirmed, contract_signed, cca_signed, contacted, admin_notes, angel_name, city, health_doc_signed, tl_norms_signed, tl_rules_signed, cantidad, finalized, withdrew, no_asistio, replaced_by_enrollment_id"
     )
     .eq("event_id", sourceEventId);
 
@@ -242,10 +242,11 @@ export async function duplicateEvent(
     angel_name?: string | null;
     city?: string | null;
     no_asistio?: boolean;
+    replaced_by_enrollment_id?: string | null;
     [key: string]: unknown;
   };
 
-  const excludeTransferred = (e: { status?: string | null }) => e.status !== "transferred_out";
+  const excludeTransferred = (e: { replaced_by_enrollment_id?: string | null }) => !e.replaced_by_enrollment_id;
 
   const sourceEnrollments =
     copyMode === "finalized"

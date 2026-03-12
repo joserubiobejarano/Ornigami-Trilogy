@@ -47,17 +47,31 @@ export function buildReportPdf(content: ReportContent): void {
   y += sectionGap;
 
   addLine("Participantes", undefined, true);
+  addLine(`Participantes inscritos: ${content.participantesInscritos}`);
   addLine(`Participantes que iniciaron: ${content.participantesIniciaron}`);
   addLine(`Participantes que no asistieron: ${content.participantesNoAsistieron}`);
   addLine(`Participantes que se retiraron: ${content.participantesRetiraron}`);
   addLine(`Participantes que culminaron: ${content.participantesCulminaron}`);
+  addLine(`Cupos transferidos: ${content.cuposTransferidos}`);
+  addLine(`Cupos recibidos: ${content.cuposRecibidos}`);
+  addLine(`Backlogs: ${content.backlogs}`);
   addLine(`Entrolados Proposito: ${content.entroladosProposito}`);
-  for (const { method, sum } of content.propositoByMethod) {
+  for (const { method, sum } of content.propositoByMethod.filter((m) => m.sum > 0)) {
     addLine(`Proposito ${method}: ${formatCurrency(sum)}`);
   }
-  addLine(`Entrolados Conexión: ${content.entroladosConexion}`);
-  for (const { method, sum } of content.conexionByMethod) {
-    addLine(`Conexión ${method}: ${formatCurrency(sum)}`);
+  if (content.totalProposito > 0) {
+    addLine(`Total Proposito: ${formatCurrency(content.totalProposito)}`, undefined, true);
+  }
+  const hasConexion =
+    content.entroladosConexion > 0 || content.totalConexion > 0 || content.conexionByMethod.some((m) => m.sum > 0);
+  if (hasConexion) {
+    addLine(`Entrolados Conexión: ${content.entroladosConexion}`);
+    for (const { method, sum } of content.conexionByMethod.filter((m) => m.sum > 0)) {
+      addLine(`Conexión ${method}: ${formatCurrency(sum)}`);
+    }
+    if (content.totalConexion > 0) {
+      addLine(`Total Conexión: ${formatCurrency(content.totalConexion)}`, undefined, true);
+    }
   }
   y += sectionGap;
 

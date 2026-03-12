@@ -16,7 +16,6 @@ const BACKLOG_STATUSES = [
   "confirmed",
   "no_show_paid",
   "no_show_unpaid",
-  "transferred_out",
 ] as const;
 
 const BOOLEAN_FIELDS = [
@@ -53,6 +52,7 @@ function applyViewFilter(
       return enrollments.filter(
         (e) =>
           !e.attended &&
+          !e.replaced_by_enrollment_id &&
           (BACKLOG_STATUSES.includes(e.status as (typeof BACKLOG_STATUSES)[number]) ||
             enrollmentIdsWithPayment.has(e.id))
       );
@@ -253,10 +253,14 @@ export async function getEventWithEnrollments(
   });
 
   // Order: place recipient immediately after the transferrer
+  const recipientIds = new Set(
+    enrollments.filter((e) => e.replaced_by_enrollment_id).map((e) => e.replaced_by_enrollment_id!)
+  );
   const ordered: EnrollmentRow[] = [];
   const added = new Set<string>();
   for (const e of enrollments) {
     if (added.has(e.id)) continue;
+    if (recipientIds.has(e.id)) continue; // defer recipients; add when we process their transferrer
     ordered.push(e);
     added.add(e.id);
     if (e.replaced_by_enrollment_id) {
@@ -985,6 +989,133 @@ function appendAdminNote(existing: string | null, newNote: string): string {
   return trimmed ? `${trimmed}\n${newNote}` : newNote;
 }
 
+/** Remove the single line that exactly matches the transfer note. */
+function removeTransferNoteLine(existing: string | null, noteToRemove: string): string {
+  const trimmed = String(existing ?? "").trim();
+  if (!trimmed) return "";
+  const toRemove = String(noteToRemove ?? "").trim();
+  if (!toRemove) return trimmed;
+  const lines = trimmed.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const next = lines.filter((line) => line !== toRemove);
+  return next.join("\n").trim();
+}
+
+export type CancelTransferResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function cancelTransferEnrollment(fromEnrollmentId: string): Promise<CancelTransferResult> {
+  const supabase = await createClient();
+
+  const { data: fromRow, error: fetchFromErr } = await supabase
+    .from("enrollments")
+    .select(`
+      id,
+      event_id,
+      replaced_by_enrollment_id,
+      admin_notes,
+      person:people(first_name, last_name)
+    `)
+    .eq("id", fromEnrollmentId)
+    .single();
+
+  if (fetchFromErr || !fromRow?.event_id) {
+    return { success: false, error: "Inscripción no encontrada." };
+  }
+  const fromEnrollment = fromRow as {
+    id: string;
+    event_id: string;
+    replaced_by_enrollment_id: string | null;
+    admin_notes: string | null;
+    person: { first_name: string | null; last_name: string | null } | { first_name: string | null; last_name: string | null }[];
+  };
+  const toEnrollmentId = fromEnrollment.replaced_by_enrollment_id;
+  if (!toEnrollmentId) {
+    return { success: false, error: "Esta inscripción no tiene una transferencia asociada." };
+  }
+
+  const { data: toRow, error: fetchToErr } = await supabase
+    .from("enrollments")
+    .select(`
+      id,
+      admin_notes,
+      person:people(first_name, last_name)
+    `)
+    .eq("id", toEnrollmentId)
+    .single();
+
+  if (fetchToErr || !toRow?.id) {
+    return { success: false, error: "Inscripción receptora no encontrada." };
+  }
+  const toEnrollment = toRow as {
+    id: string;
+    admin_notes: string | null;
+    person: { first_name: string | null; last_name: string | null } | { first_name: string | null; last_name: string | null }[];
+  };
+
+  const transferrerPerson = Array.isArray(fromEnrollment.person) ? fromEnrollment.person[0] : fromEnrollment.person;
+  const recipientPerson = Array.isArray(toEnrollment.person) ? toEnrollment.person[0] : toEnrollment.person;
+  const transferredNote = formatTransferNoteTo(
+    recipientPerson?.first_name ?? null,
+    recipientPerson?.last_name ?? null
+  );
+  const receivedNote = formatTransferNoteFrom(
+    transferrerPerson?.first_name ?? null,
+    transferrerPerson?.last_name ?? null
+  );
+
+  const fromNotesNext = removeTransferNoteLine(fromEnrollment.admin_notes, transferredNote);
+  const toNotesNext = removeTransferNoteLine(toEnrollment.admin_notes, receivedNote);
+
+  const { error: deleteTransferErr } = await supabase
+    .from("enrollment_transfers")
+    .delete()
+    .eq("from_enrollment_id", fromEnrollmentId)
+    .eq("to_enrollment_id", toEnrollmentId);
+
+  if (deleteTransferErr) {
+    return { success: false, error: "No se pudo eliminar el registro de transferencia." };
+  }
+
+  const { error: updateFromErr } = await supabase
+    .from("enrollments")
+    .update({
+      replaced_by_enrollment_id: null,
+      admin_notes: fromNotesNext || null,
+    })
+    .eq("id", fromEnrollmentId);
+
+  if (updateFromErr) {
+    return { success: false, error: "No se pudo actualizar la inscripción origen." };
+  }
+
+  const { error: updateToErr } = await supabase
+    .from("enrollments")
+    .update({ admin_notes: toNotesNext || null })
+    .eq("id", toEnrollmentId);
+
+  if (updateToErr) {
+    return { success: false, error: "No se pudo actualizar la inscripción destino." };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await writeAuditLog(supabase, {
+    entity_type: "enrollment",
+    entity_id: fromEnrollmentId,
+    action: "transfer_cancel",
+    changed_by: user?.id ?? null,
+    context: {
+      event_id: fromEnrollment.event_id,
+      to_enrollment_id: toEnrollmentId,
+      actor_email: user?.email ?? null,
+    },
+    changes: [],
+  });
+
+  revalidatePath(`/app/events/${fromEnrollment.event_id}`);
+  return { success: true };
+}
+
 export async function transferEnrollmentSpot(
   fromEnrollmentId: string,
   target: TransferSpotTarget,
@@ -1076,8 +1207,6 @@ export async function transferEnrollmentSpot(
   const transferrerPerson = Array.isArray(fromEnrollment.person) ? fromEnrollment.person[0] : fromEnrollment.person;
   const transferrerFirstName = transferrerPerson?.first_name ?? null;
   const transferrerLastName = transferrerPerson?.last_name ?? null;
-  const cantidad = fromEnrollment.cantidad != null ? Number(fromEnrollment.cantidad) : null;
-  const transferFee = Math.round((cantidad ?? 0) * 0.1);
   const receivedNote = formatTransferNoteFrom(transferrerFirstName, transferrerLastName);
   const initialAdminNotes = notes?.trim()
     ? appendAdminNote(receivedNote, notes.trim())
@@ -1088,7 +1217,6 @@ export async function transferEnrollmentSpot(
     .insert({
       event_id: eventId,
       person_id: targetPersonId,
-      status: "cupo_recibido",
       angel_name:
         (target.angel_name?.trim() || (fromEnrollment.angel_name as string | null) || null) ?? null,
       admin_notes: initialAdminNotes,
@@ -1107,25 +1235,12 @@ export async function transferEnrollmentSpot(
     .from("enrollments")
     .update({
       replaced_by_enrollment_id: toEnrollment.id,
-      status: "transferred_out",
       admin_notes: updatedFromAdminNotes,
     })
     .eq("id", fromEnrollmentId);
 
   if (updateFromErr) {
     return { success: false, error: "No se pudo actualizar la inscripción origen." };
-  }
-
-  const { error: paymentErr } = await supabase
-    .from("payments")
-    .insert({
-      enrollment_id: toEnrollment.id,
-      method: null,
-      fee_amount: transferFee,
-    });
-
-  if (paymentErr) {
-    return { success: false, error: "No se pudo registrar el fee del cupo transferido." };
   }
 
   const { data: transferRow, error: transferErr } = await supabase
@@ -1257,8 +1372,6 @@ export async function transferEnrollmentSpotToExistingEnrollment(
   const recipientFirstName = recipientPerson?.first_name ?? null;
   const recipientLastName = recipientPerson?.last_name ?? null;
 
-  const cantidad = fromEnrollment.cantidad != null ? Number(fromEnrollment.cantidad) : null;
-  const transferFee = Math.round((cantidad ?? 0) * 0.1);
   const transferredNote = formatTransferNoteTo(recipientFirstName, recipientLastName);
   const receivedNote = formatTransferNoteFrom(transferrerFirstName, transferrerLastName);
 
@@ -1269,7 +1382,6 @@ export async function transferEnrollmentSpotToExistingEnrollment(
     .from("enrollments")
     .update({
       replaced_by_enrollment_id: toEnrollmentId,
-      status: "transferred_out",
       admin_notes: updatedFromAdminNotes,
     })
     .eq("id", fromEnrollmentId);
@@ -1281,25 +1393,12 @@ export async function transferEnrollmentSpotToExistingEnrollment(
   const { error: updateToErr } = await supabase
     .from("enrollments")
     .update({
-      status: "cupo_recibido",
       admin_notes: updatedToAdminNotes,
     })
     .eq("id", toEnrollmentId);
 
   if (updateToErr) {
     return { success: false, error: "No se pudo actualizar la inscripción destino." };
-  }
-
-  const { error: paymentInsertErr } = await supabase
-    .from("payments")
-    .insert({
-      enrollment_id: toEnrollmentId,
-      method: null,
-      fee_amount: transferFee,
-    });
-
-  if (paymentInsertErr) {
-    return { success: false, error: "No se pudo registrar el fee del cupo transferido." };
   }
 
   await supabase.from("enrollment_transfers").insert({
@@ -1533,8 +1632,6 @@ export async function transferEnrollmentSpotToExistingPerson(
   const transferrerLastName = transferrerPerson?.last_name ?? null;
   const recipientFirstName = targetPerson.first_name ?? null;
   const recipientLastName = targetPerson.last_name ?? null;
-  const cantidad = fromEnrollment.cantidad != null ? Number(fromEnrollment.cantidad) : null;
-  const transferFee = Math.round((cantidad ?? 0) * 0.1);
   const receivedNote = formatTransferNoteFrom(transferrerFirstName, transferrerLastName);
 
   const { data: toEnrollment, error: insertEnrollErr } = await supabase
@@ -1542,7 +1639,6 @@ export async function transferEnrollmentSpotToExistingPerson(
     .insert({
       event_id: eventId,
       person_id: targetPersonId,
-      status: "cupo_recibido",
       angel_name: angelName,
       admin_notes: receivedNote,
     })
@@ -1560,25 +1656,12 @@ export async function transferEnrollmentSpotToExistingPerson(
     .from("enrollments")
     .update({
       replaced_by_enrollment_id: toEnrollment.id,
-      status: "transferred_out",
       admin_notes: updatedFromAdminNotes,
     })
     .eq("id", fromEnrollmentId);
 
   if (updateFromErr) {
     return { success: false, error: "No se pudo actualizar la inscripción origen." };
-  }
-
-  const { error: paymentErr } = await supabase
-    .from("payments")
-    .insert({
-      enrollment_id: toEnrollment.id,
-      method: null,
-      fee_amount: transferFee,
-    });
-
-  if (paymentErr) {
-    return { success: false, error: "No se pudo registrar el fee del cupo transferido." };
   }
 
   const { data: transferRow, error: transferErr } = await supabase
